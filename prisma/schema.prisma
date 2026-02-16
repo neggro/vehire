@@ -1,0 +1,318 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id               String         @id @default(cuid())
+  email            String         @unique
+  phone            String?
+  fullName         String
+  avatarUrl        String?
+  roles            UserRole[]     @default([USER, DRIVER])
+  kycStatus        KYCStatus      @default(PENDING)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  bookingsAsDriver Booking[]      @relation("DriverBookings")
+  bookingsAsHost   Booking[]      @relation("HostBookings")
+  conversations    Conversation[]
+  kycDocuments     KYCDocument[]
+  reviewsReceived  Review[]       @relation("ReviewsReceived")
+  reviewsGiven     Review[]       @relation("ReviewsGiven")
+  vehicles         Vehicle[]      @relation("HostVehicles")
+
+  @@index([email])
+  @@map("users")
+}
+
+model KYCDocument {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String
+  documentUrl String
+  status      KYCStatus @default(PENDING)
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("kyc_documents")
+}
+
+model Vehicle {
+  id                String         @id @default(cuid())
+  hostId            String
+  make              String
+  model             String
+  year              Int
+  color             String
+  plateNumber       String         @unique
+  vin               String?
+  locationLat       Float
+  locationLng       Float
+  locationPublicLat Float?
+  locationPublicLng Float?
+  city              String
+  state             String?
+  country           String         @default("Uruguay")
+  address           String?
+  description       String?
+  basePriceDay      Int
+  weekendPriceDay   Int?
+  estimatedValue    Int?
+  deliveryAvailable Boolean        @default(false)
+  deliveryPrice     Int?
+  status            VehicleStatus  @default(DRAFT)
+  features          String[]
+  seats             Int
+  transmission      String
+  fuelType          String
+  mileage           Int?
+  mileageLimit      Int?
+  suggestedPrice    Int?
+  pricingConfidence Float?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  availabilities    Availability[]
+  bookings          Booking[]
+  favorites         Favorite[]
+  images            VehicleImage[]
+  host              User           @relation("HostVehicles", fields: [hostId], references: [id], onDelete: Cascade)
+
+  @@index([hostId])
+  @@index([status])
+  @@index([city])
+  @@index([locationLat, locationLng])
+  @@map("vehicles")
+}
+
+model VehicleImage {
+  id        String  @id @default(cuid())
+  vehicleId String
+  url       String
+  order     Int     @default(0)
+  isPrimary Boolean @default(false)
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@map("vehicle_images")
+}
+
+model Availability {
+  id            String   @id @default(cuid())
+  vehicleId     String
+  date          DateTime @db.Date
+  isAvailable   Boolean  @default(true)
+  priceOverride Int?
+  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, date])
+  @@index([vehicleId])
+  @@index([date])
+  @@map("availabilities")
+}
+
+model Booking {
+  id                 String        @id @default(cuid())
+  driverId           String
+  hostId             String
+  vehicleId          String
+  startDate          DateTime
+  endDate            DateTime
+  baseAmount         Int
+  deliveryFee        Int?
+  platformFee        Int
+  depositAmount      Int
+  totalAmount        Int
+  status             BookingStatus @default(PENDING)
+  cancelledBy        String?
+  cancelledAt        DateTime?
+  cancellationReason String?
+  pickupLocation     String?
+  returnLocation     String?
+  pickupOdometer     Int?
+  returnOdometer     Int?
+  pickupPhoto        String?
+  returnPhoto        String?
+  pickupNotes        String?
+  returnNotes        String?
+  pickupAt           DateTime?
+  returnAt           DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  driver             User          @relation("DriverBookings", fields: [driverId], references: [id])
+  host               User          @relation("HostBookings", fields: [hostId], references: [id])
+  vehicle            Vehicle       @relation(fields: [vehicleId], references: [id])
+  incidents          Incident[]
+  payment            Payment?
+  review             Review?
+
+  @@index([driverId])
+  @@index([hostId])
+  @@index([vehicleId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@map("bookings")
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  bookingId      String        @unique
+  amount         Int
+  platformFee    Int
+  hostPayout     Int
+  depositAmount  Int
+  mpPreferenceId String?
+  mpPaymentId    String?
+  mpStatus       String?
+  status         PaymentStatus @default(PENDING)
+  escrowStatus   String?
+  paidAt         DateTime?
+  releasedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  booking        Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([status])
+  @@index([mpPaymentId])
+  @@map("payments")
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  reviewerId String
+  revieweeId String
+  bookingId  String   @unique
+  vehicleId  String?
+  rating     Int
+  comment    String?
+  isPublic   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  booking    Booking  @relation(fields: [bookingId], references: [id])
+  reviewee   User     @relation("ReviewsReceived", fields: [revieweeId], references: [id])
+  reviewer   User     @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+
+  @@index([reviewerId])
+  @@index([revieweeId])
+  @@index([bookingId])
+  @@map("reviews")
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages  Message[]
+
+  @@index([userId])
+  @@index([type])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  sender         String
+  content        String
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_config")
+}
+
+model Incident {
+  id          String    @id @default(cuid())
+  bookingId   String
+  reportedBy  String
+  type        String
+  description String
+  photos      String[]
+  status      String    @default("open")
+  resolution  String?
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  amount      Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  booking     Booking   @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@index([status])
+  @@map("incidents")
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  vehicleId String
+  createdAt DateTime @default(now())
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vehicleId])
+  @@index([userId])
+  @@map("favorites")
+}
+
+enum UserRole {
+  USER
+  HOST
+  DRIVER
+  ADMIN
+}
+
+enum KYCStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum VehicleStatus {
+  DRAFT
+  PENDING_APPROVAL
+  ACTIVE
+  PAUSED
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  HELD
+  RELEASED
+  REFUNDED
+  FAILED
+}
