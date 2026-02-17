@@ -3,86 +3,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Car,
   Plus,
-  MoreVertical,
-  Pencil,
-  Trash2,
-  Eye,
-  Pause,
-  Play,
-  Calendar,
-  DollarSign,
+  Image as ImageIcon,
 } from "lucide-react";
 import { createClient as getServerClient } from "@/lib/supabase/server";
 import { formatPrice } from "@/lib/utils";
-import { VEHICLE_STATUS_LABELS } from "@/constants";
+import { VEHICLE_STATUS_LABELS, TRANSMISSION_LABELS } from "@/constants";
+import { VehicleActions } from "@/components/vehicle/vehicle-actions";
 
-// Mock data for demo
-const mockVehicles = [
-  {
-    id: "1",
-    make: "Toyota",
-    model: "Corolla",
-    year: 2022,
-    city: "Montevideo",
-    status: "ACTIVE",
-    basePriceDay: 250000,
-    seats: 5,
-    transmission: "automatic",
-    createdAt: "2024-01-15",
-    bookingsCount: 12,
-    earnings: 2500000,
-  },
-  {
-    id: "2",
-    make: "Volkswagen",
-    model: "Polo",
-    year: 2021,
-    city: "Punta del Este",
-    status: "ACTIVE",
-    basePriceDay: 180000,
-    seats: 5,
-    transmission: "manual",
-    createdAt: "2024-01-10",
-    bookingsCount: 8,
-    earnings: 1800000,
-  },
-  {
-    id: "3",
-    make: "Chevrolet",
-    model: "Cruze",
-    year: 2023,
-    city: "Montevideo",
-    status: "PAUSED",
-    basePriceDay: 300000,
-    seats: 5,
-    transmission: "automatic",
-    createdAt: "2024-01-05",
-    bookingsCount: 3,
-    earnings: 900000,
-  },
-  {
-    id: "4",
-    make: "Renault",
-    model: "Sandero",
-    year: 2020,
-    city: "Colonia",
-    status: "DRAFT",
-    basePriceDay: 150000,
-    seats: 5,
-    transmission: "manual",
-    createdAt: "2024-02-01",
-    bookingsCount: 0,
-    earnings: 0,
-  },
-];
+interface VehicleWithStats {
+  id: string;
+  make: string;
+  model: string;
+  year: number;
+  city: string;
+  status: string;
+  basePriceDay: number;
+  seats: number;
+  transmission: string;
+  createdAt: string;
+  images: { url: string }[];
+  _count?: {
+    bookings: number;
+  };
+}
 
 export default async function HostVehiclesPage() {
   const supabase = await getServerClient();
@@ -90,22 +35,42 @@ export default async function HostVehiclesPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // In production, fetch vehicles from database
-  // const { data: vehicles } = await supabase
-  //   .from("vehicles")
-  //   .select(`
-  //     *,
-  //     _count: {
-  //       bookings: { where: { status: "COMPLETED" } }
-  //     }
-  //   `)
-  //   .eq("hostId", user!.id)
-  //   .orderBy("createdAt", { ascending: false });
+  // Fetch vehicles from database
+  const { data: vehiclesData } = await (supabase as any)
+    .from("vehicles")
+    .select(`
+      id,
+      make,
+      model,
+      year,
+      city,
+      status,
+      basePriceDay,
+      seats,
+      transmission,
+      createdAt,
+      images:vehicle_images (url)
+    `)
+    .eq("hostId", user!.id)
+    .order("createdAt", { ascending: false });
 
-  const vehicles = mockVehicles;
+  const vehicles = (vehiclesData || []) as VehicleWithStats[];
+
+  // Get booking counts for each vehicle
+  const vehicleIds = vehicles.map((v) => v.id);
+  const { data: bookingsData } = await (supabase as any)
+    .from("bookings")
+    .select("vehicleId, status")
+    .in("vehicleId", vehicleIds);
+
+  // Calculate stats
+  const bookingCounts: Record<string, number> = {};
+  (bookingsData || []).forEach((b: any) => {
+    bookingCounts[b.vehicleId] = (bookingCounts[b.vehicleId] || 0) + 1;
+  });
 
   const activeVehicles = vehicles.filter((v) => v.status === "ACTIVE").length;
-  const totalEarnings = vehicles.reduce((sum, v) => sum + v.earnings, 0);
+  const totalBookings = Object.values(bookingCounts).reduce((sum, count) => sum + count, 0);
 
   return (
     <div className="container py-8">
@@ -114,7 +79,9 @@ export default async function HostVehiclesPage() {
         <div>
           <h1 className="text-3xl font-bold">Mis vehículos</h1>
           <p className="text-muted-foreground">
-            Gestiona tu flota de {vehicles.length} vehículos
+            {vehicles.length > 0
+              ? `Gestiona tu flota de ${vehicles.length} vehículo${vehicles.length !== 1 ? "s" : ""}`
+              : "Gestiona tus vehículos publicados"}
           </p>
         </div>
         <Button asChild>
@@ -126,40 +93,48 @@ export default async function HostVehiclesPage() {
       </div>
 
       {/* Stats */}
-      <div className="mb-8 grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Vehículos activos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeVehicles}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Reservas totales
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {vehicles.reduce((sum, v) => sum + v.bookingsCount, 0)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Ganancias totales
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatPrice(totalEarnings)}</div>
-          </CardContent>
-        </Card>
-      </div>
+      {vehicles.length > 0 && (
+        <div className="mb-8 grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                Vehículos activos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeVehicles}</div>
+              <p className="text-xs text-muted-foreground">
+                de {vehicles.length} totales
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                Reservas totales
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalBookings}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                Borradores
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {vehicles.filter((v) => v.status === "DRAFT").length}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Pendientes de completar
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Vehicles list */}
       {vehicles.length > 0 ? (
@@ -168,20 +143,28 @@ export default async function HostVehiclesPage() {
             <Card key={vehicle.id}>
               <CardContent className="p-6">
                 <div className="flex items-center gap-6">
-                  {/* Vehicle image placeholder */}
-                  <div className="h-24 w-32 shrink-0 rounded-lg bg-muted flex items-center justify-center">
-                    <Car className="h-10 w-10 text-muted-foreground" />
+                  {/* Vehicle image */}
+                  <div className="h-24 w-32 shrink-0 rounded-lg bg-muted flex items-center justify-center overflow-hidden">
+                    {vehicle.images && vehicle.images.length > 0 ? (
+                      <img
+                        src={vehicle.images[0].url}
+                        alt={`${vehicle.make} ${vehicle.model}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                    )}
                   </div>
 
                   {/* Vehicle info */}
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-4">
                       <div>
                         <h3 className="font-semibold text-lg">
                           {vehicle.make} {vehicle.model} {vehicle.year}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {vehicle.city}
+                          {vehicle.city} · {vehicle.seats} asientos · {TRANSMISSION_LABELS[vehicle.transmission] || vehicle.transmission}
                         </p>
                       </div>
                       <Badge
@@ -192,14 +175,16 @@ export default async function HostVehiclesPage() {
                             ? "warning"
                             : vehicle.status === "DRAFT"
                             ? "secondary"
-                            : "outline"
+                            : vehicle.status === "PENDING_APPROVAL"
+                            ? "outline"
+                            : "destructive"
                         }
                       >
                         {VEHICLE_STATUS_LABELS[vehicle.status] || vehicle.status}
                       </Badge>
                     </div>
 
-                    <div className="mt-3 flex items-center gap-6 text-sm">
+                    <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
                       <div>
                         <span className="text-muted-foreground">Precio:</span>{" "}
                         <span className="font-medium">
@@ -208,60 +193,25 @@ export default async function HostVehiclesPage() {
                       </div>
                       <div>
                         <span className="text-muted-foreground">Reservas:</span>{" "}
-                        <span className="font-medium">{vehicle.bookingsCount}</span>
+                        <span className="font-medium">
+                          {bookingCounts[vehicle.id] || 0}
+                        </span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Ganancias:</span>{" "}
+                        <span className="text-muted-foreground">Creado:</span>{" "}
                         <span className="font-medium">
-                          {formatPrice(vehicle.earnings)}
+                          {new Date(vehicle.createdAt).toLocaleDateString("es-UY")}
                         </span>
                       </div>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/vehicle/${vehicle.id}`}>
-                        <Eye className="mr-1 h-4 w-4" />
-                        Ver
-                      </Link>
-                    </Button>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/host/vehicles/${vehicle.id}/edit`}>
-                        <Pencil className="mr-1 h-4 w-4" />
-                        Editar
-                      </Link>
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {vehicle.status === "ACTIVE" ? (
-                          <DropdownMenuItem>
-                            <Pause className="mr-2 h-4 w-4" />
-                            Pausar
-                          </DropdownMenuItem>
-                        ) : vehicle.status === "PAUSED" ? (
-                          <DropdownMenuItem>
-                            <Play className="mr-2 h-4 w-4" />
-                            Activar
-                          </DropdownMenuItem>
-                        ) : null}
-                        <DropdownMenuItem>
-                          <Calendar className="mr-2 h-4 w-4" />
-                          Disponibilidad
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                  <VehicleActions
+                    vehicleId={vehicle.id}
+                    vehicleName={`${vehicle.make} ${vehicle.model} ${vehicle.year}`}
+                    status={vehicle.status}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -274,13 +224,13 @@ export default async function HostVehiclesPage() {
             <h3 className="text-lg font-semibold mb-2">
               No tienes vehículos publicados
             </h3>
-            <p className="text-muted-foreground text-center mb-6">
-              Comienza a ganar dinero publicando tu primer vehículo
+            <p className="text-muted-foreground text-center mb-6 max-w-md">
+              Comienza a ganar dinero publicando tu primer vehículo en nuestra plataforma
             </p>
             <Button asChild>
               <Link href="/host/vehicles/new">
                 <Plus className="mr-2 h-4 w-4" />
-                Publicar vehículo
+                Publicar mi primer vehículo
               </Link>
             </Button>
           </CardContent>

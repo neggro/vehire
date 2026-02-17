@@ -20,7 +20,9 @@ model User {
   updatedAt        DateTime       @updatedAt
   bookingsAsDriver Booking[]      @relation("DriverBookings")
   bookingsAsHost   Booking[]      @relation("HostBookings")
-  conversations    Conversation[]
+  conversationsOwned       Conversation[]  @relation("ConversationOwner")
+  conversationsParticipated Conversation[] @relation("ConversationParticipant")
+  sentMessages     Message[]      @relation("MessageSender")
   kycDocuments     KYCDocument[]
   reviewsReceived  Review[]       @relation("ReviewsReceived")
   reviewsGiven     Review[]       @relation("ReviewsGiven")
@@ -154,6 +156,7 @@ model Booking {
   incidents          Incident[]
   payment            Payment?
   review             Review?
+  conversation       Conversation?
 
   @@index([driverId])
   @@index([hostId])
@@ -208,16 +211,31 @@ model Review {
 }
 
 model Conversation {
-  id        String    @id @default(cuid())
-  userId    String
-  type      String
-  title     String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages  Message[]
+  id            String    @id @default(cuid())
+
+  // Owner of the conversation (user who initiated)
+  userId        String
+  user          User      @relation("ConversationOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Second participant (for Host-Driver chats)
+  participantId String?
+  participant   User?     @relation("ConversationParticipant", fields: [participantId], references: [id], onDelete: SetNull)
+
+  // Type: "SUPPORT_DRIVER", "SUPPORT_HOST", "BOOKING_CHAT"
+  type          String
+
+  // For conversations linked to a booking
+  bookingId     String?   @unique
+  booking       Booking?  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  title         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  messages      Message[]
 
   @@index([userId])
+  @@index([participantId])
+  @@index([bookingId])
   @@index([type])
   @@map("conversations")
 }
@@ -225,14 +243,19 @@ model Conversation {
 model Message {
   id             String       @id @default(cuid())
   conversationId String
-  sender         String
+
+  // Sender ID (actual user) - null for platform/AI messages
+  senderId       String?
+  sender         String       // "user", "platform", "ai" - for backward compatibility
   content        String
   metadata       Json?
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderUser     User?        @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull)
 
   @@index([conversationId])
   @@index([createdAt])
+  @@index([senderId])
   @@map("messages")
 }
 

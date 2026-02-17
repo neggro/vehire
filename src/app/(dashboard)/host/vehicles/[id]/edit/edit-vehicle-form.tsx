@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -14,25 +14,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
   FUEL_TYPE_LABELS,
   TRANSMISSION_LABELS,
   VEHICLE_FEATURES,
+  VEHICLE_STATUS_LABELS,
 } from "@/constants";
 import {
   ArrowLeft,
   Loader2,
-  Plus,
   X,
   Car,
   MapPin,
   DollarSign,
   Settings,
-  Upload,
+  Save,
 } from "lucide-react";
 import { ImageUpload } from "@/components/upload/image-upload";
-import { createVehicle } from "@/actions/vehicle";
+import { updateVehicle } from "@/actions/vehicle";
 
 const STEPS = [
   { id: 1, title: "Información básica", icon: Car },
@@ -41,43 +42,46 @@ const STEPS = [
   { id: 4, title: "Configuración", icon: Settings },
 ];
 
-export default function NewVehiclePage() {
+interface VehicleFormData {
+  id: string;
+  make: string;
+  model: string;
+  year: string;
+  color: string;
+  plateNumber: string;
+  vin: string;
+  seats: string;
+  transmission: string;
+  fuelType: string;
+  mileage: string;
+  description: string;
+  city: string;
+  state: string;
+  address: string;
+  basePriceDay: string;
+  weekendPriceDay: string;
+  estimatedValue: string;
+  deliveryAvailable: boolean;
+  deliveryPrice: string;
+  mileageLimit: string;
+  features: string[];
+  images: string[];
+  status: string;
+}
+
+interface EditVehicleFormProps {
+  initialData: VehicleFormData;
+}
+
+export default function EditVehicleForm({ initialData }: EditVehicleFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>(initialData.features);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
-  const [formData, setFormData] = useState({
-    // Basic info
-    make: "",
-    model: "",
-    year: "",
-    color: "",
-    plateNumber: "",
-    vin: "",
-    seats: "5",
-    transmission: "",
-    fuelType: "",
-    mileage: "",
-    description: "",
-    // Location
-    city: "",
-    state: "",
-    address: "",
-    // Pricing
-    basePriceDay: "",
-    weekendPriceDay: "",
-    estimatedValue: "",
-    deliveryAvailable: false,
-    deliveryPrice: "",
-    mileageLimit: "300",
-    // Features
-    features: [] as string[],
-    // Images
-    images: [] as string[],
-  });
+  const [formData, setFormData] = useState<VehicleFormData>(initialData);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -140,8 +144,13 @@ export default function NewVehiclePage() {
         uploadedUrls = urls;
       }
 
-      // Call server action to create vehicle
-      const result = await createVehicle({
+      // Combine existing images (non-blob) with newly uploaded
+      const existingUrls = formData.images.filter((url) => !url.startsWith("blob:"));
+      const allImages = [...existingUrls, ...uploadedUrls];
+
+      // Call server action to update vehicle
+      const result = await updateVehicle({
+        vehicleId: formData.id,
         make: formData.make,
         model: formData.model,
         year: parseInt(formData.year),
@@ -171,12 +180,12 @@ export default function NewVehiclePage() {
           ? parseInt(formData.mileageLimit)
           : undefined,
         features: selectedFeatures,
-        images: uploadedUrls,
+        images: allImages,
       });
 
       if (!result.success) {
         toast({
-          title: "Error al crear vehículo",
+          title: "Error al actualizar vehículo",
           description: result.error || "Ocurrió un error inesperado",
           variant: "destructive",
         });
@@ -184,8 +193,8 @@ export default function NewVehiclePage() {
       }
 
       toast({
-        title: "Vehículo creado",
-        description: "Tu vehículo ha sido guardado como borrador",
+        title: "Vehículo actualizado",
+        description: "Los cambios han sido guardados correctamente",
       });
 
       router.push("/host/vehicles");
@@ -224,6 +233,21 @@ export default function NewVehiclePage() {
     }
   };
 
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case "ACTIVE":
+        return "success";
+      case "PAUSED":
+        return "warning";
+      case "DRAFT":
+        return "secondary";
+      case "PENDING_APPROVAL":
+        return "outline";
+      default:
+        return "destructive";
+    }
+  };
+
   return (
     <div className="container max-w-3xl py-8">
       {/* Header */}
@@ -235,10 +259,17 @@ export default function NewVehiclePage() {
           <ArrowLeft className="h-4 w-4" />
           Volver a mis vehículos
         </Link>
-        <h1 className="text-3xl font-bold">Publicar vehículo</h1>
-        <p className="text-muted-foreground">
-          Completa la información para publicar tu vehículo
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Editar vehículo</h1>
+            <p className="text-muted-foreground">
+              {formData.make} {formData.model} {formData.year}
+            </p>
+          </div>
+          <Badge variant={getStatusBadgeVariant(formData.status) as any}>
+            {VEHICLE_STATUS_LABELS[formData.status] || formData.status}
+          </Badge>
+        </div>
       </div>
 
       {/* Progress steps */}
@@ -767,7 +798,8 @@ export default function NewVehiclePage() {
           ) : (
             <Button type="submit" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Publicar vehículo
+              <Save className="mr-2 h-4 w-4" />
+              Guardar cambios
             </Button>
           )}
         </div>

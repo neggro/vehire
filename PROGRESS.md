@@ -472,24 +472,30 @@ OPENAI_API_KEY=
 | 2026-02-16 | Fix: Página de onboarding para hosts (/host/onboarding) |
 | 2026-02-16 | Fix: Server actions para ensureUserExists y becomeHost |
 | 2026-02-16 | Docs: Documentación de configuración de emails |
+| 2026-02-16 | Feature: Página de vehículos del host dinámica (sin datos hardcodeados) |
+| 2026-02-16 | Feature: Edición de vehículos completa con formulario multi-paso |
+| 2026-02-16 | Feature: Sistema de acciones de vehículos (pausar/activar/eliminar) |
+| 2026-02-16 | Feature: Calendario de disponibilidad para vehículos |
+| 2026-02-16 | Feature: Sistema de mensajería básico |
+| 2026-02-16 | API: Rutas para disponibilidad, conversaciones y mensajes |
 
 ---
 
 ## Métricas de Progreso
 
 ```
-Fase 1 (MVP Core):        █████████████████████░░░░  90%
+Fase 1 (MVP Core):        ██████████████████████░░░  95%
 Fase 2 (Pagos):           ░░░░░░░░░░░░░░░░░░░░░░░░░░   0%
 Fase 3 (IA):              ██░░░░░░░░░░░░░░░░░░░░░░░░  10%
 Fase 4 (Mobile):          ░░░░░░░░░░░░░░░░░░░░░░░░░░   0%
 Fase 5 (Optimization):    ░░░░░░░░░░░░░░░░░░░░░░░░░░   0%
 
-Progreso General:         █████████░░░░░░░░░░░░░░░░  36%
+Progreso General:         ██████████░░░░░░░░░░░░░░░  40%
 ```
 
-**Archivos creados:** ~55+
-**Componentes UI:** 13
-**Páginas:** 24 rutas
+**Archivos creados:** ~70+
+**Componentes UI:** 15+
+**Páginas:** 28 rutas
 **Build status:** ✅ Exitoso
 
 ---
@@ -517,4 +523,34 @@ Progreso General:         █████████░░░░░░░░░
   - Tracking de archivos pendientes
   - Preview con indicador de "Pendiente"
   - Integración con API route de upload
+
+## Nuevos Archivos Creados (2026-02-16 - Parte 2)
+
+### Edición de Vehículos
+- `src/app/(dashboard)/host/vehicles/[id]/edit/page.tsx` - Página de edición (server component)
+- `src/app/(dashboard)/host/vehicles/[id]/edit/edit-vehicle-form.tsx` - Formulario de edición (client component)
+
+### Acciones de Vehículos
+- `src/components/vehicle/vehicle-actions.tsx` - Componente con acciones:
+  - Pausar/Activar vehículo
+  - Eliminar vehículo con confirmación
+  - Links a disponibilidad y edición
+
+### Calendario de Disponibilidad
+- `src/app/(dashboard)/host/vehicles/[id]/availability/page.tsx` - Página del calendario
+- `src/app/(dashboard)/host/vehicles/[id]/availability/availability-calendar.tsx` - Componente calendario interactivo
+- `src/app/api/availability/route.ts` - API para actualizar disponibilidad
+
+### Sistema de Mensajería
+- `src/app/(dashboard)/messages/page.tsx` - Lista de conversaciones
+- `src/app/(dashboard)/messages/new/page.tsx` - Crear nueva conversación
+- `src/app/(dashboard)/messages/[id]/page.tsx` - Ver conversación
+- `src/app/(dashboard)/messages/[id]/conversation-view.tsx` - Vista de chat
+- `src/app/api/conversations/route.ts` - API para crear conversaciones
+- `src/app/api/messages/route.ts` - API para enviar mensajes
+
+### Componentes Adicionados al Header
+- Link a mensajes en el menú de usuario
+- Icono MessageSquare agregado
+
 

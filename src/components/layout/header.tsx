@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { Car, Menu, Plus, Search, User } from "lucide-react";
+import { Car, Menu, Plus, Search, User, MessageSquare } from "lucide-react";
 import { APP_NAME } from "@/constants";
 import { createClient as getServerClient } from "@/lib/supabase/server";
 
@@ -107,6 +107,12 @@ export async function Header() {
                     <Link href="/dashboard">
                       <User className="mr-2 h-4 w-4" />
                       <span>Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/messages">
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      <span>Mensajes</span>
                     </Link>
                   </DropdownMenuItem>
                   {profile?.roles?.includes("HOST") && (
