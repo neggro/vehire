@@ -25,7 +25,6 @@ interface DocumentStatus {
 }
 
 export default function KYCPage() {
-  const router = useRouter();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);

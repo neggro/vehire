@@ -1,9 +1,8 @@
-import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ChevronLeft,
@@ -21,119 +20,237 @@ import {
   CheckCircle,
   MessageCircle,
 } from "lucide-react";
-import { createClient as getServerClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 import { FUEL_TYPE_LABELS, TRANSMISSION_LABELS, VEHICLE_FEATURES } from "@/constants";
+import { BookingCard } from "./booking-card";
+import { ImageGallery } from "./image-gallery";
 
 // Types
-interface Review {
-  id: string;
-  rating: number;
-  comment: string;
-  author: string;
-  date: string;
+interface VehiclePageProps {
+  params: Promise<{ id: string }>;
 }
 
-// Mock vehicle data for demo (will be replaced with real data)
-const mockVehicle = {
-  id: "1",
-  make: "Toyota",
-  model: "Corolla",
-  year: 2022,
-  color: "Blanco Perla",
-  city: "Montevideo",
-  basePriceDay: 250000,
-  weekendPriceDay: 300000,
-  description: "Excelente Toyota Corolla 2022 en perfectas condiciones. Ideal para viajes de negocios o vacaciones familiares. El auto cuenta con todos los servicios al día y se entrega impecable.\n\nPerfecto para recorrer Uruguay con comodidad y seguridad. Incluye seguro completo y asistencia en carretera 24/7.",
-  features: ["ac", "bluetooth", "gps", "usb", "backup_camera", "cruise_control"],
-  seats: 5,
-  transmission: "automatic",
-  fuelType: "gasoline",
-  mileage: 25000,
-  mileageLimit: 300,
-  deliveryAvailable: true,
-  deliveryPrice: 50000,
-  images: [],
-  host: {
-    id: "host1",
-    fullName: "Carlos Rodríguez",
-    avatarUrl: null,
-    responseTime: "1 hora",
-    rating: 4.9,
-    reviewCount: 47,
-    tripsCount: 89,
-    memberSince: "2023-01-15",
-  },
+interface VehicleData {
+  id: string;
+  make: string;
+  model: string;
+  year: number;
+  color: string;
+  city: string;
+  state: string | null;
+  country: string;
+  address: string | null;
+  description: string | null;
+  basePriceDay: number;
+  weekendPriceDay: number | null;
+  estimatedValue: number | null;
+  deliveryAvailable: boolean;
+  deliveryPrice: number | null;
+  features: string[];
+  seats: number;
+  transmission: string;
+  fuelType: string;
+  mileage: number | null;
+  mileageLimit: number | null;
+  status: string;
+  images: { id: string; url: string; order: number; isPrimary: boolean }[];
   location: {
-    lat: -34.9011,
-    lng: -56.1645,
-    address: "Pocitos, Montevideo",
-  },
-  rating: 4.8,
-  reviewCount: 24,
-  rules: [
+    lat: number | null;
+    lng: number | null;
+    address: string | null;
+  };
+  rating: number | null;
+  reviewCount: number;
+  tripsCount: number;
+  host: {
+    id: string;
+    fullName: string;
+    avatarUrl: string | null;
+    rating: number | null;
+    reviewCount: number;
+    tripsCount: number;
+    memberSince: Date;
+  };
+  reviews: {
+    id: string;
+    rating: number;
+    comment: string | null;
+    createdAt: Date;
+    author: string;
+    authorAvatar: string | null;
+  }[];
+  rules: string[];
+}
+
+async function getVehicle(id: string): Promise<VehicleData | null> {
+  const vehicle = await prisma.vehicle.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      make: true,
+      model: true,
+      year: true,
+      color: true,
+      city: true,
+      state: true,
+      country: true,
+      address: true,
+      description: true,
+      basePriceDay: true,
+      weekendPriceDay: true,
+      estimatedValue: true,
+      deliveryAvailable: true,
+      deliveryPrice: true,
+      status: true,
+      features: true,
+      seats: true,
+      transmission: true,
+      fuelType: true,
+      mileage: true,
+      mileageLimit: true,
+      locationLat: true,
+      locationLng: true,
+      locationPublicLat: true,
+      locationPublicLng: true,
+      createdAt: true,
+      host: {
+        select: {
+          id: true,
+          fullName: true,
+          avatarUrl: true,
+          createdAt: true,
+          reviewsReceived: {
+            where: { isPublic: true },
+            select: { rating: true },
+          },
+          vehicles: {
+            select: { id: true },
+            where: { status: "ACTIVE" },
+          },
+        },
+      },
+      images: {
+        select: { id: true, url: true, order: true, isPrimary: true },
+        orderBy: { order: "asc" },
+      },
+      bookings: {
+        where: {
+          status: { in: ["COMPLETED"] },
+          review: { isNot: null },
+        },
+        select: {
+          review: {
+            select: {
+              id: true,
+              rating: true,
+              comment: true,
+              createdAt: true,
+              reviewer: {
+                select: { fullName: true, avatarUrl: true },
+              },
+            },
+          },
+        },
+        take: 10,
+        orderBy: { createdAt: "desc" },
+      },
+      _count: {
+        select: {
+          bookings: {
+            where: { status: "COMPLETED" },
+          },
+        },
+      },
+    },
+  });
+
+  if (!vehicle) return null;
+
+  // Only return active or paused vehicles to public
+  if (vehicle.status !== "ACTIVE" && vehicle.status !== "PAUSED") {
+    return null;
+  }
+
+  // Calculate host stats
+  const hostReviewCount = vehicle.host.reviewsReceived.length;
+  const hostRating = hostReviewCount > 0
+    ? vehicle.host.reviewsReceived.reduce((sum, r) => sum + r.rating, 0) / hostReviewCount
+    : null;
+
+  // Calculate vehicle rating from reviews
+  const reviews = vehicle.bookings
+    .map((b) => b.review)
+    .filter(Boolean);
+  const reviewCount = reviews.length;
+  const rating = reviewCount > 0
+    ? reviews.reduce((sum, r) => sum + (r?.rating || 0), 0) / reviewCount
+    : null;
+
+  // Build rules array
+  const rules = [
     "No fumar en el vehículo",
     "No se permiten mascotas",
     "Devolver con el mismo nivel de combustible",
-    "Máximo 300 km por día",
-  ],
-};
+    vehicle.mileageLimit ? `Máximo ${vehicle.mileageLimit} km por día` : null,
+  ].filter(Boolean) as string[];
 
-const reviews = [
-  {
-    id: "1",
-    rating: 5,
-    comment: "Excelente auto, muy bien cuidado. El anfitrión muy amable y puntual. Sin duda lo volvería a alquilar.",
-    author: "María García",
-    date: "2024-01-15",
-  },
-  {
-    id: "2",
-    rating: 5,
-    comment: "Todo perfecto, el auto está impecable y funciona de maravilla. Muy recomendado.",
-    author: "Juan Pérez",
-    date: "2024-01-10",
-  },
-  {
-    id: "3",
-    rating: 4,
-    comment: "Muy buena experiencia. El auto cumplió con todas las expectativas.",
-    author: "Ana Martínez",
-    date: "2024-01-05",
-  },
-];
-
-function ImageGallery() {
-  return (
-    <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-muted">
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-8xl">🚗</span>
-      </div>
-      {/* Navigation arrows */}
-      <button className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-lg hover:bg-white">
-        <ChevronLeft className="h-5 w-5" />
-      </button>
-      <button className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 shadow-lg hover:bg-white">
-        <ChevronRight className="h-5 w-5" />
-      </button>
-      {/* Image counter */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-sm text-white">
-        1 / 5
-      </div>
-      {/* Actions */}
-      <div className="absolute right-4 top-4 flex gap-2">
-        <button className="rounded-full bg-white/80 p-2 shadow-lg hover:bg-white">
-          <Share2 className="h-5 w-5" />
-        </button>
-        <button className="rounded-full bg-white/80 p-2 shadow-lg hover:bg-white">
-          <Heart className="h-5 w-5" />
-        </button>
-      </div>
-    </div>
-  );
+  return {
+    id: vehicle.id,
+    make: vehicle.make,
+    model: vehicle.model,
+    year: vehicle.year,
+    color: vehicle.color,
+    city: vehicle.city,
+    state: vehicle.state,
+    country: vehicle.country,
+    address: vehicle.locationPublicLat ? null : vehicle.address,
+    description: vehicle.description,
+    basePriceDay: vehicle.basePriceDay,
+    weekendPriceDay: vehicle.weekendPriceDay,
+    estimatedValue: vehicle.estimatedValue,
+    deliveryAvailable: vehicle.deliveryAvailable,
+    deliveryPrice: vehicle.deliveryPrice,
+    features: vehicle.features,
+    seats: vehicle.seats,
+    transmission: vehicle.transmission,
+    fuelType: vehicle.fuelType,
+    mileage: vehicle.mileage,
+    mileageLimit: vehicle.mileageLimit,
+    status: vehicle.status,
+    images: vehicle.images,
+    location: {
+      lat: vehicle.locationPublicLat || vehicle.locationLat,
+      lng: vehicle.locationPublicLng || vehicle.locationLng,
+      address: vehicle.locationPublicLat
+        ? `${vehicle.city}${vehicle.state ? `, ${vehicle.state}` : ""}`
+        : vehicle.address,
+    },
+    rating: rating ? Math.round(rating * 10) / 10 : null,
+    reviewCount,
+    tripsCount: vehicle._count.bookings,
+    host: {
+      id: vehicle.host.id,
+      fullName: vehicle.host.fullName,
+      avatarUrl: vehicle.host.avatarUrl,
+      rating: hostRating ? Math.round(hostRating * 10) / 10 : null,
+      reviewCount: hostReviewCount,
+      tripsCount: vehicle.host.vehicles.length,
+      memberSince: vehicle.host.createdAt,
+    },
+    reviews: reviews.map((r) => ({
+      id: r!.id,
+      rating: r!.rating,
+      comment: r!.comment,
+      createdAt: r!.createdAt,
+      author: r!.reviewer.fullName,
+      authorAvatar: r!.reviewer.avatarUrl,
+    })),
+    rules,
+  };
 }
 
-function VehicleInfo({ vehicle }: { vehicle: typeof mockVehicle }) {
+function VehicleInfo({ vehicle }: { vehicle: VehicleData }) {
   return (
     <div className="space-y-6">
       {/* Title and rating */}
@@ -142,15 +259,19 @@ function VehicleInfo({ vehicle }: { vehicle: typeof mockVehicle }) {
           {vehicle.make} {vehicle.model} {vehicle.year}
         </h1>
         <div className="mt-2 flex items-center gap-4">
-          <div className="flex items-center gap-1">
-            <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-            <span className="font-medium">{vehicle.rating}</span>
-            <span className="text-muted-foreground">({vehicle.reviewCount} reseñas)</span>
-          </div>
-          <span className="text-muted-foreground">•</span>
+          {vehicle.rating && (
+            <>
+              <div className="flex items-center gap-1">
+                <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                <span className="font-medium">{vehicle.rating}</span>
+                <span className="text-muted-foreground">({vehicle.reviewCount} reseñas)</span>
+              </div>
+              <span className="text-muted-foreground">•</span>
+            </>
+          )}
           <div className="flex items-center gap-1 text-muted-foreground">
             <MapPin className="h-4 w-4" />
-            <span>{vehicle.city}</span>
+            <span>{vehicle.city}{vehicle.state ? `, ${vehicle.state}` : ""}</span>
           </div>
         </div>
       </div>
@@ -163,11 +284,11 @@ function VehicleInfo({ vehicle }: { vehicle: typeof mockVehicle }) {
         </Badge>
         <Badge variant="secondary" className="gap-1 px-3 py-1">
           <Gauge className="h-4 w-4" />
-          {TRANSMISSION_LABELS[vehicle.transmission]}
+          {TRANSMISSION_LABELS[vehicle.transmission] || vehicle.transmission}
         </Badge>
         <Badge variant="secondary" className="gap-1 px-3 py-1">
           <Fuel className="h-4 w-4" />
-          {FUEL_TYPE_LABELS[vehicle.fuelType]}
+          {FUEL_TYPE_LABELS[vehicle.fuelType] || vehicle.fuelType}
         </Badge>
         <Badge variant="secondary" className="gap-1 px-3 py-1">
           {vehicle.color}
@@ -175,32 +296,36 @@ function VehicleInfo({ vehicle }: { vehicle: typeof mockVehicle }) {
       </div>
 
       {/* Description */}
-      <div>
-        <h2 className="mb-2 text-xl font-semibold">Descripción</h2>
-        <p className="whitespace-pre-line text-muted-foreground">
-          {vehicle.description}
-        </p>
-      </div>
+      {vehicle.description && (
+        <div>
+          <h2 className="mb-2 text-xl font-semibold">Descripción</h2>
+          <p className="whitespace-pre-line text-muted-foreground">
+            {vehicle.description}
+          </p>
+        </div>
+      )}
 
       {/* Features */}
-      <div>
-        <h2 className="mb-4 text-xl font-semibold">Características</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {vehicle.features.map((featureId) => {
-            const feature = VEHICLE_FEATURES.find((f) => f.id === featureId);
-            if (!feature) return null;
-            return (
-              <div
-                key={featureId}
-                className="flex items-center gap-2 rounded-lg border p-3"
-              >
-                <CheckCircle className="h-5 w-5 text-primary" />
-                <span className="text-sm">{feature.label}</span>
-              </div>
-            );
-          })}
+      {vehicle.features.length > 0 && (
+        <div>
+          <h2 className="mb-4 text-xl font-semibold">Características</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {vehicle.features.map((featureId) => {
+              const feature = VEHICLE_FEATURES.find((f) => f.id === featureId);
+              if (!feature) return null;
+              return (
+                <div
+                  key={featureId}
+                  className="flex items-center gap-2 rounded-lg border p-3"
+                >
+                  <CheckCircle className="h-5 w-5 text-primary" />
+                  <span className="text-sm">{feature.label}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Rules */}
       <div>
@@ -228,99 +353,9 @@ function VehicleInfo({ vehicle }: { vehicle: typeof mockVehicle }) {
   );
 }
 
-function BookingCard({ vehicle }: { vehicle: typeof mockVehicle }) {
-  return (
-    <Card className="sticky top-24">
-      <CardHeader>
-        <div className="flex items-baseline justify-between">
-          <div>
-            <span className="text-2xl font-bold">{formatPrice(vehicle.basePriceDay)}</span>
-            <span className="text-muted-foreground">/día</span>
-          </div>
-          {vehicle.weekendPriceDay && (
-            <span className="text-sm text-muted-foreground">
-              Finde: {formatPrice(vehicle.weekendPriceDay)}/día
-            </span>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Date picker placeholder */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg border p-3">
-            <label className="text-xs text-muted-foreground">Retiro</label>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">Seleccionar fecha</span>
-            </div>
-          </div>
-          <div className="rounded-lg border p-3">
-            <label className="text-xs text-muted-foreground">Devolución</label>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">Seleccionar fecha</span>
-            </div>
-          </div>
-        </div>
+function HostCard({ host }: { host: VehicleData["host"] }) {
+  const isSuperHost = host.rating && host.rating >= 4.8 && host.reviewCount >= 10;
 
-        {/* Location */}
-        <div className="rounded-lg border p-3">
-          <label className="text-xs text-muted-foreground">Ubicación</label>
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">{vehicle.location.address}</span>
-          </div>
-        </div>
-
-        {/* Delivery option */}
-        {vehicle.deliveryAvailable && (
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm">Entrega a domicilio</span>
-            </div>
-            <span className="text-sm font-medium">
-              +{formatPrice(vehicle.deliveryPrice!)}
-            </span>
-          </div>
-        )}
-
-        {/* Price summary */}
-        <div className="space-y-2 border-t pt-4">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Subtotal</span>
-            <span>--</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Depósito de garantía</span>
-            <span>--</span>
-          </div>
-          <div className="flex justify-between font-semibold">
-            <span>Total</span>
-            <span>Selecciona fechas</span>
-          </div>
-        </div>
-
-        <Button className="w-full" size="lg">
-          Reservar
-        </Button>
-
-        {/* Trust badges */}
-        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Shield className="h-4 w-4" />
-            <span>Seguro incluido</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Clock className="h-4 w-4" />
-            <span>Cancelación gratis</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function HostCard({ host }: { host: typeof mockVehicle.host }) {
   return (
     <Card>
       <CardContent className="p-6">
@@ -334,22 +369,22 @@ function HostCard({ host }: { host: typeof mockVehicle.host }) {
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold">{host.fullName}</h3>
-              <Badge variant="secondary" className="text-xs">
-                Super Anfitrión
-              </Badge>
+              {isSuperHost && (
+                <Badge variant="secondary" className="text-xs">
+                  Super Anfitrión
+                </Badge>
+              )}
             </div>
-            <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span>{host.rating}</span>
-              <span>({host.reviewCount} reseñas)</span>
-            </div>
+            {host.rating && (
+              <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                <span>{host.rating}</span>
+                <span>({host.reviewCount} reseñas)</span>
+              </div>
+            )}
             <div className="mt-2 text-sm text-muted-foreground">
-              <p>{host.tripsCount} viajes completados</p>
+              <p>{host.tripsCount} vehículos activos</p>
               <p>Miembro desde {new Date(host.memberSince).getFullYear()}</p>
-              <p className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />
-                Responde en {host.responseTime}
-              </p>
             </div>
           </div>
         </div>
@@ -367,32 +402,39 @@ function HostCard({ host }: { host: typeof mockVehicle.host }) {
   );
 }
 
-function ReviewsSection({ reviews }: { reviews: Review[] }) {
+function ReviewsSection({ reviews, rating }: { reviews: VehicleData["reviews"]; rating: number | null }) {
+  if (reviews.length === 0) {
+    return null;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">
           Reseñas ({reviews.length})
         </h2>
-        <div className="flex items-center gap-1">
-          <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-          <span className="font-semibold">4.8</span>
-        </div>
+        {rating && (
+          <div className="flex items-center gap-1">
+            <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+            <span className="font-semibold">{rating}</span>
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">
-        {reviews.map((review) => (
+        {reviews.slice(0, 5).map((review) => (
           <Card key={review.id}>
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <Avatar>
+                    <AvatarImage src={review.authorAvatar || ""} />
                     <AvatarFallback>{review.author.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="font-medium">{review.author}</p>
                     <p className="text-sm text-muted-foreground">
-                      {new Date(review.date).toLocaleDateString("es-UY", {
+                      {new Date(review.createdAt).toLocaleDateString("es-UY", {
                         year: "numeric",
                         month: "long",
                       })}
@@ -412,20 +454,24 @@ function ReviewsSection({ reviews }: { reviews: Review[] }) {
                   ))}
                 </div>
               </div>
-              <p className="mt-3 text-muted-foreground">{review.comment}</p>
+              {review.comment && (
+                <p className="mt-3 text-muted-foreground">{review.comment}</p>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <Button variant="outline" className="w-full">
-        Ver todas las reseñas
-      </Button>
+      {reviews.length > 5 && (
+        <Button variant="outline" className="w-full">
+          Ver todas las reseñas
+        </Button>
+      )}
     </div>
   );
 }
 
-function LocationMap() {
+function LocationMap({ vehicle }: { vehicle: VehicleData }) {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Ubicación</h2>
@@ -434,7 +480,7 @@ function LocationMap() {
           <div className="text-center">
             <MapPin className="mx-auto h-8 w-8 text-muted-foreground" />
             <p className="mt-2 text-sm text-muted-foreground">
-              Pocitos, Montevideo
+              {vehicle.location.address || vehicle.city}
             </p>
             <p className="text-xs text-muted-foreground">
               Ubicación exacta tras confirmar reserva
@@ -446,31 +492,13 @@ function LocationMap() {
   );
 }
 
-interface VehiclePageProps {
-  params: Promise<{ id: string }>;
-}
-
 export default async function VehiclePage({ params }: VehiclePageProps) {
   const { id } = await params;
+  const vehicle = await getVehicle(id);
 
-  // In production, fetch vehicle from database
-  // const supabase = await getServerClient();
-  // const { data: vehicle } = await supabase
-  //   .from("vehicles")
-  //   .select(`
-  //     *,
-  //     host:users(*),
-  //     images:vehicle_images(*),
-  //     reviews(*)
-  //   `)
-  //   .eq("id", id)
-  //   .single();
-
-  // if (!vehicle) {
-  //   notFound();
-  // }
-
-  const vehicle = mockVehicle;
+  if (!vehicle) {
+    notFound();
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -491,10 +519,10 @@ export default async function VehiclePage({ params }: VehiclePageProps) {
         <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
           {/* Main content */}
           <div className="space-y-8">
-            <ImageGallery />
+            <ImageGallery images={vehicle.images} vehicleName={`${vehicle.make} ${vehicle.model}`} />
             <VehicleInfo vehicle={vehicle} />
-            <LocationMap />
-            <ReviewsSection reviews={reviews} />
+            <LocationMap vehicle={vehicle} />
+            <ReviewsSection reviews={vehicle.reviews} rating={vehicle.rating} />
           </div>
 
           {/* Sidebar */}

@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
       // const mpPayment = await getPayment(paymentId);
 
       // Find the payment in our database
-      const payment = await prisma.payment.findFirst({
+      // First try by mpPaymentId, then by looking up via preference
+      let payment = await prisma.payment.findFirst({
         where: {
           mpPaymentId: paymentId.toString(),
         },
@@ -35,6 +36,33 @@ export async function POST(request: NextRequest) {
           },
         },
       });
+
+      // If not found by payment ID, the webhook might be for a new payment
+      // We need to find it via the preference ID from the merchant_order
+      if (!payment && body.data?.preference_id) {
+        payment = await prisma.payment.findFirst({
+          where: {
+            mpPreferenceId: body.data.preference_id,
+          },
+          include: {
+            booking: {
+              include: {
+                driver: true,
+                host: true,
+                vehicle: true,
+              },
+            },
+          },
+        });
+
+        // Update the payment with the actual payment ID from MP
+        if (payment) {
+          await prisma.payment.update({
+            where: { id: payment.id },
+            data: { mpPaymentId: paymentId.toString() },
+          });
+        }
+      }
 
       if (!payment) {
         console.log(`Payment not found for MP payment ID: ${paymentId}`);
