@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { createClient as getServerClient } from "@/lib/supabase/server";
 import { ensureUserExists } from "@/actions/user";
+import { prisma } from "@/lib/prisma";
 import {
   Car,
   DollarSign,
@@ -56,14 +57,12 @@ export default async function HostOnboardingPage() {
   // Ensure user exists in our database (handles OAuth users)
   await ensureUserExists();
 
-  // Check if user exists in public.users
-  const { data: profileData } = await supabase
-    .from("users")
-    .select("roles, kycStatus")
-    .eq("id", user.id)
-    .single();
+  // Get user profile with Prisma
+  const profile = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { roles: true, kycStatus: true },
+  });
 
-  const profile = profileData as { roles: string[]; kycStatus: string } | null;
   const isKycVerified = profile?.kycStatus === "VERIFIED";
 
   return (

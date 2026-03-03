@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { Car, Menu, Plus, Search, User, MessageSquare } from "lucide-react";
+import { Car, Menu, Plus, User, MessageSquare } from "lucide-react";
 import { APP_NAME } from "@/constants";
 import { createClient as getServerClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 
 export async function Header() {
   const supabase = await getServerClient();
@@ -22,12 +23,10 @@ export async function Header() {
 
   let profile = null;
   if (user) {
-    const { data } = await supabase
-      .from("users")
-      .select("fullName, avatarUrl, roles")
-      .eq("id", user.id)
-      .single();
-    profile = data;
+    profile = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { fullName: true, avatarUrl: true, roles: true },
+    });
   }
 
   return (

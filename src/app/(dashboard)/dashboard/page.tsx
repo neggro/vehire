@@ -13,27 +13,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { createClient as getServerClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
-
-// Types for our data
-interface UserProfile {
-  fullName: string;
-  roles: string[];
-  kycStatus: string;
-}
-
-interface BookingWithVehicle {
-  id: string;
-  startDate: string;
-  endDate: string;
-  totalAmount: number;
-  status: string;
-  vehicle: {
-    make: string;
-    model: string;
-    year: number;
-  };
-}
 
 export default async function DashboardPage() {
   const supabase = await getServerClient();
@@ -41,36 +22,33 @@ export default async function DashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: profileData } = await supabase
-    .from("users")
-    .select("fullName, roles, kycStatus")
-    .eq("id", user!.id)
-    .single();
+  // Get user profile with Prisma
+  const profile = await prisma.user.findUnique({
+    where: { id: user!.id },
+    select: { fullName: true, roles: true, kycStatus: true },
+  });
 
-  const profile = profileData as UserProfile | null;
-
-  // Get user's bookings as driver
-  const { data: driverBookingsData } = await supabase
-    .from("bookings")
-    .select(`
-      id,
-      startDate,
-      endDate,
-      totalAmount,
-      status,
-      vehicle:vehicles(make, model, year)
-    `)
-    .eq("driverId", user!.id)
-    .order("createdAt", { ascending: false })
-    .limit(5);
-
-  const driverBookings = driverBookingsData as BookingWithVehicle[] | null;
+  // Get user's bookings as driver with Prisma
+  const driverBookings = await prisma.booking.findMany({
+    where: { driverId: user!.id },
+    select: {
+      id: true,
+      startDate: true,
+      endDate: true,
+      totalAmount: true,
+      status: true,
+      vehicle: {
+        select: { make: true, model: true, year: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+  });
 
   // Get stats
-  const { count: totalBookings } = await supabase
-    .from("bookings")
-    .select("*", { count: "exact", head: true })
-    .eq("driverId", user!.id);
+  const totalBookings = await prisma.booking.count({
+    where: { driverId: user!.id },
+  });
 
   const isHost = profile?.roles?.includes("HOST");
 

@@ -15,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, HeadphonesIcon, Car } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function NewMessagePage() {
@@ -23,7 +23,7 @@ export default function NewMessagePage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    type: "SUPPORT_DRIVER",
+    type: "support",
     title: "",
     message: "",
   });
@@ -66,23 +66,6 @@ export default function NewMessagePage() {
     }
   };
 
-  const typeOptions = [
-    {
-      value: "SUPPORT_DRIVER",
-      label: "Soporte para Conductores",
-      description: "Ayuda con reservas, pagos o problemas como conductor",
-      icon: Car,
-    },
-    {
-      value: "SUPPORT_HOST",
-      label: "Soporte para Anfitriones",
-      description: "Ayuda con vehículos, pagos o problemas como anfitrión",
-      icon: HeadphonesIcon,
-    },
-  ];
-
-  const selectedType = typeOptions.find((t) => t.value === formData.type);
-
   return (
     <div className="container max-w-2xl py-8">
       {/* Header */}
@@ -96,7 +79,7 @@ export default function NewMessagePage() {
         </Link>
         <h1 className="text-3xl font-bold">Nuevo mensaje</h1>
         <p className="text-muted-foreground">
-          Inicia una nueva conversación con nuestro equipo de soporte
+          Inicia una nueva conversación
         </p>
       </div>
 
@@ -111,7 +94,7 @@ export default function NewMessagePage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="type">Tipo de consulta</Label>
+              <Label htmlFor="type">Tipo de conversación</Label>
               <Select
                 value={formData.type}
                 onValueChange={(value) =>
@@ -122,21 +105,11 @@ export default function NewMessagePage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {typeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div className="flex items-center gap-2">
-                        <option.icon className="h-4 w-4" />
-                        <span>{option.label}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="support">Soporte técnico</SelectItem>
+                  <SelectItem value="booking">Pregunta sobre reserva</SelectItem>
+                  <SelectItem value="general">Consulta general</SelectItem>
                 </SelectContent>
               </Select>
-              {selectedType && (
-                <p className="text-sm text-muted-foreground">
-                  {selectedType.description}
-                </p>
-              )}
             </div>
 
             <div className="space-y-2">

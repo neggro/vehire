@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient as getServerClient } from "@/lib/supabase/server";
 import { ensureUserExists } from "@/actions/user";
+import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Car, Plus, BarChart3, Calendar, Settings } from "lucide-react";
 
@@ -29,14 +30,12 @@ export default async function HostLayout({
   // Ensure user exists in our database
   await ensureUserExists();
 
-  // Check if user has HOST role
-  const { data: profileData } = await supabase
-    .from("users")
-    .select("roles")
-    .eq("id", user.id)
-    .single();
+  // Check if user has HOST role using Prisma
+  const profile = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { roles: true },
+  });
 
-  const profile = profileData as { roles: string[] } | null;
   const isHost = profile?.roles?.includes("HOST");
 
   // If not a host, show onboarding content instead of the normal layout

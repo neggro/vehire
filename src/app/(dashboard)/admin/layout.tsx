@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient as getServerClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import {
   ShieldCheck,
   Users,
@@ -33,13 +34,11 @@ export default async function AdminLayout({
     redirect("/login?redirect=/admin");
   }
 
-  const { data: profileData } = await supabase
-    .from("users")
-    .select("roles")
-    .eq("id", user.id)
-    .single();
-
-  const profile = profileData as { roles: string[] } | null;
+  // Get user profile with Prisma
+  const profile = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { roles: true },
+  });
 
   // Check if user is admin
   const isAdmin = profile?.roles?.includes("ADMIN");

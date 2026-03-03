@@ -9,13 +9,10 @@ import {
   MessageSquare,
   Plus,
   Search,
-  HeadphonesIcon,
-  Car,
 } from "lucide-react";
-import { formatDistanceToNow, format } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default async function MessagesPage() {
   const supabase = await getServerClient();
@@ -27,34 +24,13 @@ export default async function MessagesPage() {
     redirect("/login?redirect=/messages");
   }
 
-  // Fetch user's conversations (where they are owner OR participant)
+  // Fetch user's conversations
   const conversations = await prisma.conversation.findMany({
-    where: {
-      OR: [
-        { userId: user.id },
-        { participantId: user.id },
-      ],
-    },
+    where: { userId: user.id },
     include: {
       messages: {
         orderBy: { createdAt: "desc" },
         take: 1,
-      },
-      user: {
-        select: { id: true, fullName: true, avatarUrl: true },
-      },
-      participant: {
-        select: { id: true, fullName: true, avatarUrl: true },
-      },
-      booking: {
-        select: {
-          id: true,
-          startDate: true,
-          endDate: true,
-          vehicle: {
-            select: { id: true, make: true, model: true },
-          },
-        },
       },
       _count: {
         select: { messages: true },
@@ -65,74 +41,32 @@ export default async function MessagesPage() {
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case "SUPPORT_DRIVER":
-        return "Soporte Conductor";
-      case "SUPPORT_HOST":
-        return "Soporte Anfitrión";
-      case "BOOKING_CHAT":
-        return "Chat de Reserva";
       case "support":
         return "Soporte";
       case "booking":
         return "Reserva";
       case "general":
         return "General";
+      case "SUPPORT_DRIVER":
+        return "Soporte Conductor";
+      case "SUPPORT_HOST":
+        return "Soporte Anfitrión";
       default:
         return type;
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "SUPPORT_DRIVER":
-      case "SUPPORT_HOST":
-      case "support":
-        return HeadphonesIcon;
-      case "BOOKING_CHAT":
-      case "booking":
-        return Car;
-      default:
-        return MessageSquare;
-    }
-  };
-
   const getTypeColor = (type: string) => {
     switch (type) {
+      case "support":
       case "SUPPORT_DRIVER":
       case "SUPPORT_HOST":
-      case "support":
         return "bg-blue-500";
-      case "BOOKING_CHAT":
       case "booking":
         return "bg-green-500";
       default:
         return "bg-gray-500";
     }
-  };
-
-  // Get the other participant in the conversation
-  const getOtherParticipant = (conversation: typeof conversations[0]) => {
-    if (conversation.userId === user.id) {
-      return conversation.participant; // For support conversations, this may be null
-    }
-    return conversation.user;
-  };
-
-  // Get display title
-  const getDisplayTitle = (conversation: typeof conversations[0]) => {
-    if (conversation.title) return conversation.title;
-
-    const otherParticipant = getOtherParticipant(conversation);
-
-    if (conversation.type === "BOOKING_CHAT" && conversation.booking) {
-      return `${conversation.booking.vehicle.make} ${conversation.booking.vehicle.model}`;
-    }
-
-    if (otherParticipant) {
-      return otherParticipant.fullName;
-    }
-
-    return getTypeLabel(conversation.type);
   };
 
   return (
@@ -167,69 +101,48 @@ export default async function MessagesPage() {
       {/* Conversations list */}
       {conversations.length > 0 ? (
         <div className="space-y-3">
-          {conversations.map((conversation) => {
-            const TypeIcon = getTypeIcon(conversation.type);
-            const otherParticipant = getOtherParticipant(conversation);
-
-            return (
-              <Link key={conversation.id} href={`/messages/${conversation.id}`}>
-                <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-4">
-                      {/* Avatar */}
-                      {otherParticipant ? (
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={otherParticipant.avatarUrl || undefined} />
-                          <AvatarFallback>
-                            {otherParticipant.fullName.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${getTypeColor(conversation.type)}`}>
-                          <TypeIcon className="h-5 w-5 text-white" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="font-semibold truncate">
-                            {getDisplayTitle(conversation)}
-                          </h3>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Badge variant="outline" className="text-xs">
-                              {getTypeLabel(conversation.type)}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(conversation.updatedAt, {
-                                addSuffix: true,
-                                locale: es,
-                              })}
-                            </span>
-                          </div>
-                        </div>
-                        {conversation.messages[0] && (
-                          <p className="text-sm text-muted-foreground truncate mt-1">
-                            {conversation.messages[0].content}
-                          </p>
-                        )}
-                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <MessageSquare className="h-3 w-3" />
-                            {conversation._count.messages} mensajes
+          {conversations.map((conversation) => (
+            <Link key={conversation.id} href={`/messages/${conversation.id}`}>
+              <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-4">
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${getTypeColor(conversation.type)}`}>
+                      <MessageSquare className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-semibold truncate">
+                          {conversation.title || getTypeLabel(conversation.type)}
+                        </h3>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant="outline" className="text-xs">
+                            {getTypeLabel(conversation.type)}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(conversation.updatedAt, {
+                              addSuffix: true,
+                              locale: es,
+                            })}
                           </span>
-                          {conversation.booking && (
-                            <span className="flex items-center gap-1">
-                              <Car className="h-3 w-3" />
-                              {format(new Date(conversation.booking.startDate), "d MMM", { locale: es })} - {format(new Date(conversation.booking.endDate), "d MMM", { locale: es })}
-                            </span>
-                          )}
                         </div>
                       </div>
+                      {conversation.messages[0] && (
+                        <p className="text-sm text-muted-foreground truncate mt-1">
+                          {conversation.messages[0].content}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <MessageSquare className="h-3 w-3" />
+                          {conversation._count.messages} mensajes
+                        </span>
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
         </div>
       ) : (
         <Card>

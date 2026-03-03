@@ -4,40 +4,27 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Loader2, Send, HeadphonesIcon } from "lucide-react";
+import { Loader2, Send, User, Bot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 
-interface SenderUser {
-  id: string;
-  fullName: string;
-  avatarUrl: string | null;
-}
-
 interface Message {
   id: string;
-  senderId: string | null;
   sender: string;
   content: string;
   createdAt: string;
-  senderUser?: SenderUser | null;
 }
 
 interface ConversationViewProps {
   conversationId: string;
-  currentUserId: string;
   initialMessages: Message[];
-  otherParticipantName: string;
 }
 
 export function ConversationView({
   conversationId,
-  currentUserId,
   initialMessages,
-  otherParticipantName,
 }: ConversationViewProps) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -87,25 +74,7 @@ export function ConversationView({
     }
   };
 
-  // Determine if message is from current user
-  const isCurrentUser = (message: Message) => {
-    return message.senderId === currentUserId || (message.sender === "user" && !message.senderId);
-  };
-
-  // Get sender display name
-  const getSenderName = (message: Message) => {
-    if (isCurrentUser(message)) return "Tú";
-    if (message.senderUser) return message.senderUser.fullName;
-    if (message.sender === "platform" || message.sender === "ai") return "Soporte";
-    return otherParticipantName;
-  };
-
-  // Get sender avatar
-  const getSenderAvatar = (message: Message) => {
-    if (isCurrentUser(message)) return null;
-    if (message.senderUser?.avatarUrl) return message.senderUser.avatarUrl;
-    return null;
-  };
+  const isUser = (sender: string) => sender === "user";
 
   return (
     <Card className="flex flex-col h-[600px]">
@@ -116,62 +85,49 @@ export function ConversationView({
             <p>No hay mensajes todavía. ¡Sé el primero en escribir!</p>
           </div>
         ) : (
-          messages.map((message) => {
-            const isUser = isCurrentUser(message);
-
-            return (
+          messages.map((message) => (
+            <div
+              key={message.id}
+              className={cn(
+                "flex gap-3",
+                isUser(message.sender) ? "justify-end" : "justify-start"
+              )}
+            >
+              {!isUser(message.sender) && (
+                <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0">
+                  <Bot className="h-4 w-4 text-primary-foreground" />
+                </div>
+              )}
               <div
-                key={message.id}
                 className={cn(
-                  "flex gap-3",
-                  isUser ? "justify-end" : "justify-start"
+                  "max-w-[70%] rounded-lg px-4 py-2",
+                  isUser(message.sender)
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted"
                 )}
               >
-                {!isUser && (
-                  <Avatar className="h-8 w-8 shrink-0">
-                    <AvatarImage src={getSenderAvatar(message) || undefined} />
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {message.sender === "platform" || message.sender === "ai" ? (
-                        <HeadphonesIcon className="h-4 w-4" />
-                      ) : (
-                        getSenderName(message).charAt(0).toUpperCase()
-                      )}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-                <div
+                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                <p
                   className={cn(
-                    "max-w-[70%] rounded-lg px-4 py-2",
-                    isUser
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
+                    "text-xs mt-1",
+                    isUser(message.sender)
+                      ? "text-primary-foreground/70"
+                      : "text-muted-foreground"
                   )}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                  <p
-                    className={cn(
-                      "text-xs mt-1",
-                      isUser
-                        ? "text-primary-foreground/70"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {formatDistanceToNow(new Date(message.createdAt), {
-                      addSuffix: true,
-                      locale: es,
-                    })}
-                  </p>
-                </div>
-                {isUser && (
-                  <Avatar className="h-8 w-8 shrink-0">
-                    <AvatarFallback className="bg-muted">
-                      Tú
-                    </AvatarFallback>
-                  </Avatar>
-                )}
+                  {formatDistanceToNow(new Date(message.createdAt), {
+                    addSuffix: true,
+                    locale: es,
+                  })}
+                </p>
               </div>
-            );
-          })
+              {isUser(message.sender) && (
+                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+          ))
         )}
         <div ref={messagesEndRef} />
       </CardContent>
