@@ -57,22 +57,21 @@ export async function createVehicle(
       return { success: false, error: "Debes estar autenticado para publicar un vehículo" };
     }
 
-    // Check if user has HOST role
-    const { data: userData } = await supabase
-      .from("users")
-      .select("roles, kycStatus")
-      .eq("id", user.id)
-      .single();
+    // Check if user has HOST role using Prisma
+    const userData = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { roles: true, kycStatus: true },
+    });
 
     const hasHostRole = userData?.roles?.includes("HOST");
 
     // If not a host yet, add HOST role
     if (!hasHostRole) {
       const currentRoles = userData?.roles || ["USER", "DRIVER"];
-      await supabase
-        .from("users")
-        .update({ roles: [...currentRoles, "HOST"] })
-        .eq("id", user.id);
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { roles: [...currentRoles, "HOST"] },
+      });
     }
 
     // Create vehicle

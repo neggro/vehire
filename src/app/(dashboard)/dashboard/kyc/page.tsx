@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { createBrowserClient } from "@/lib/supabase";
 import {
   KYC_DOCUMENT_TYPES,
   KYC_DOCUMENT_LABELS,
@@ -17,8 +15,6 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  Loader2,
-  Trash2,
 } from "lucide-react";
 
 interface DocumentStatus {
@@ -107,51 +103,28 @@ export default function KYCPage() {
     );
 
     try {
-      const supabase = createBrowserClient();
+      // Upload via API route
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", type);
 
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        throw new Error("No autenticado");
-      }
-
-      // Upload to Supabase Storage
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${user.id}/${type}-${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("kyc-documents")
-        .upload(fileName, file);
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("kyc-documents")
-        .getPublicUrl(fileName);
-
-      // Save document record
-      const { error: dbError } = await (supabase as any).from("kyc_documents").insert({
-        userId: user.id,
-        type,
-        documentUrl: urlData.publicUrl,
-        status: "PENDING",
+      const response = await fetch("/api/kyc/upload", {
+        method: "POST",
+        body: formData,
       });
 
-      if (dbError) {
-        throw dbError;
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Upload failed");
       }
+
+      const { document } = await response.json();
 
       // Update local state
       setDocuments((prev) =>
         prev.map((doc) =>
           doc.type === type
-            ? { ...doc, status: "uploaded", url: urlData.publicUrl }
+            ? { ...doc, status: "uploaded", url: document.documentUrl }
             : doc
         )
       );

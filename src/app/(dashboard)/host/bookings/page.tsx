@@ -3,22 +3,18 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { createBrowserClient } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import {
   Calendar,
-  MapPin,
   Clock,
   Car,
-  ChevronRight,
   Loader2,
   CheckCircle,
   XCircle,
-  MessageCircle,
   User,
 } from "lucide-react";
 import { format } from "date-fns";
@@ -67,7 +63,6 @@ export default function HostBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("pending");
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -76,39 +71,10 @@ export default function HostBookingsPage() {
 
   const fetchBookings = async () => {
     try {
-      const supabase = createBrowserClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { data } = await (supabase as any)
-        .from("bookings")
-        .select(`
-          id,
-          status,
-          startDate,
-          endDate,
-          totalAmount,
-          baseAmount,
-          platformFee,
-          vehicle:vehicles (
-            id,
-            make,
-            model,
-            year,
-            city,
-            images:vehicle_images (url)
-          ),
-          driver:users!bookings_driverId_fkey (id, fullName, email)
-        `)
-        .eq("hostId", user.id)
-        .order("startDate", { ascending: true });
-
-      if (data) {
-        setBookings(data);
-      }
+      const response = await fetch("/api/bookings/host");
+      if (!response.ok) throw new Error("Error fetching bookings");
+      const data = await response.json();
+      setBookings(data.bookings || []);
     } catch (error) {
       console.error("Error fetching bookings:", error);
     } finally {
@@ -118,13 +84,13 @@ export default function HostBookingsPage() {
 
   const handleUpdateStatus = async (bookingId: string, newStatus: string) => {
     try {
-      const supabase = createBrowserClient();
-      const { error } = await (supabase as any)
-        .from("bookings")
-        .update({ status: newStatus })
-        .eq("id", bookingId);
+      const response = await fetch(`/api/bookings/${bookingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
 
-      if (error) throw error;
+      if (!response.ok) throw new Error("Error updating booking");
 
       toast({
         title: "Estado actualizado",

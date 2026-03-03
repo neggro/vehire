@@ -6,35 +6,14 @@ import {
   Car,
   Calendar,
   DollarSign,
-  TrendingUp,
   ArrowRight,
   Plus,
   Clock,
   Star,
 } from "lucide-react";
 import { createClient as getServerClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
-
-// Types for our data
-interface VehicleData {
-  id: string;
-  make: string;
-  model: string;
-  year: number;
-  city: string;
-  status: string;
-  basePriceDay: number;
-}
-
-interface BookingData {
-  id: string;
-  startDate: string;
-  endDate: string;
-  baseAmount: number;
-  platformFee: number;
-  status: string;
-  vehicle: { make: string; model: string; year: number };
-}
 
 export default async function HostDashboardPage() {
   const supabase = await getServerClient();
@@ -42,43 +21,52 @@ export default async function HostDashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Get host's vehicles
-  const { data: vehiclesData } = await supabase
-    .from("vehicles")
-    .select("id, make, model, year, city, status, basePriceDay")
-    .eq("hostId", user!.id);
+  // Get host's vehicles with Prisma
+  const vehicles = await prisma.vehicle.findMany({
+    where: { hostId: user!.id },
+    select: {
+      id: true,
+      make: true,
+      model: true,
+      year: true,
+      city: true,
+      status: true,
+      basePriceDay: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
 
-  const vehicles = vehiclesData as VehicleData[] | null;
-
-  // Get host's bookings
-  const { data: bookingsData } = await supabase
-    .from("bookings")
-    .select(`
-      id,
-      startDate,
-      endDate,
-      baseAmount,
-      platformFee,
-      status,
-      vehicle:vehicles(make, model, year)
-    `)
-    .eq("hostId", user!.id)
-    .order("createdAt", { ascending: false })
-    .limit(10);
-
-  const bookings = bookingsData as BookingData[] | null;
+  // Get host's bookings with Prisma
+  const bookings = await prisma.booking.findMany({
+    where: { hostId: user!.id },
+    select: {
+      id: true,
+      startDate: true,
+      endDate: true,
+      baseAmount: true,
+      platformFee: true,
+      status: true,
+      vehicle: {
+        select: { make: true, model: true, year: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+  });
 
   // Calculate stats
-  const activeVehicles = vehicles?.filter((v) => v.status === "ACTIVE").length || 0;
-  const totalVehicles = vehicles?.length || 0;
+  const activeVehicles = vehicles.filter((v) => v.status === "ACTIVE").length;
+  const totalVehicles = vehicles.length;
 
-  const pendingBookings =
-    bookings?.filter((b) => b.status === "PENDING" || b.status === "CONFIRMED")
-      .length || 0;
+  const pendingBookings = bookings.filter(
+    (b) => b.status === "PENDING" || b.status === "CONFIRMED"
+  ).length;
 
-  const completedBookings = bookings?.filter((b) => b.status === "COMPLETED");
-  const totalEarnings =
-    completedBookings?.reduce((sum, b) => sum + (b.baseAmount - b.platformFee), 0) || 0;
+  const completedBookings = bookings.filter((b) => b.status === "COMPLETED");
+  const totalEarnings = completedBookings.reduce(
+    (sum, b) => sum + (b.baseAmount - b.platformFee),
+    0
+  );
 
   return (
     <div className="container py-8">
@@ -101,56 +89,64 @@ export default async function HostDashboardPage() {
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4 mb-8">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Vehículos activos
-            </CardTitle>
-            <Car className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {activeVehicles} / {totalVehicles}
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Vehículos activos
+                </p>
+                <p className="text-2xl font-bold">
+                  {activeVehicles} / {totalVehicles}
+                </p>
+              </div>
+              <Car className="h-4 w-4 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Reservas pendientes
-            </CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingBookings}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Ganancias totales
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatPrice(totalEarnings)}
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Reservas pendientes
+                </p>
+                <p className="text-2xl font-bold">{pendingBookings}</p>
+              </div>
+              <Clock className="h-4 w-4 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Calificación
-            </CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">4.9</div>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Ganancias totales
+                </p>
+                <p className="text-2xl font-bold">
+                  {formatPrice(totalEarnings)}
+                </p>
+              </div>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Calificación
+                </p>
+                <p className="text-2xl font-bold">4.9</p>
+              </div>
+              <Star className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Bookings */}
+      {/* Recent Bookings and Vehicles */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -170,7 +166,7 @@ export default async function HostDashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {bookings && bookings.length > 0 ? (
+            {bookings.length > 0 ? (
               <div className="space-y-4">
                 {bookings.slice(0, 5).map((booking) => (
                   <div
@@ -238,7 +234,7 @@ export default async function HostDashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {vehicles && vehicles.length > 0 ? (
+            {vehicles.length > 0 ? (
               <div className="space-y-4">
                 {vehicles.slice(0, 4).map((vehicle) => (
                   <div

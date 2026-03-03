@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -8,26 +8,10 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { createClient as getServerClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import { formatPrice } from "@/lib/utils";
 import { VEHICLE_STATUS_LABELS, TRANSMISSION_LABELS } from "@/constants";
 import { VehicleActions } from "@/components/vehicle/vehicle-actions";
-
-interface VehicleWithStats {
-  id: string;
-  make: string;
-  model: string;
-  year: number;
-  city: string;
-  status: string;
-  basePriceDay: number;
-  seats: number;
-  transmission: string;
-  createdAt: string;
-  images: { url: string }[];
-  _count?: {
-    bookings: number;
-  };
-}
 
 export default async function HostVehiclesPage() {
   const supabase = await getServerClient();
@@ -35,42 +19,34 @@ export default async function HostVehiclesPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Fetch vehicles from database
-  const { data: vehiclesData } = await (supabase as any)
-    .from("vehicles")
-    .select(`
-      id,
-      make,
-      model,
-      year,
-      city,
-      status,
-      basePriceDay,
-      seats,
-      transmission,
-      createdAt,
-      images:vehicle_images (url)
-    `)
-    .eq("hostId", user!.id)
-    .order("createdAt", { ascending: false });
-
-  const vehicles = (vehiclesData || []) as VehicleWithStats[];
-
-  // Get booking counts for each vehicle
-  const vehicleIds = vehicles.map((v) => v.id);
-  const { data: bookingsData } = await (supabase as any)
-    .from("bookings")
-    .select("vehicleId, status")
-    .in("vehicleId", vehicleIds);
-
-  // Calculate stats
-  const bookingCounts: Record<string, number> = {};
-  (bookingsData || []).forEach((b: any) => {
-    bookingCounts[b.vehicleId] = (bookingCounts[b.vehicleId] || 0) + 1;
+  // Fetch vehicles with Prisma
+  const vehicles = await prisma.vehicle.findMany({
+    where: { hostId: user!.id },
+    select: {
+      id: true,
+      make: true,
+      model: true,
+      year: true,
+      city: true,
+      status: true,
+      basePriceDay: true,
+      seats: true,
+      transmission: true,
+      createdAt: true,
+      images: {
+        select: { url: true },
+        orderBy: { order: "asc" },
+      },
+      _count: {
+        select: { bookings: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
   });
 
+  // Calculate stats
   const activeVehicles = vehicles.filter((v) => v.status === "ACTIVE").length;
-  const totalBookings = Object.values(bookingCounts).reduce((sum, count) => sum + count, 0);
+  const totalBookings = vehicles.reduce((sum, v) => sum + v._count.bookings, 0);
 
   return (
     <div className="container py-8">
@@ -96,12 +72,7 @@ export default async function HostVehiclesPage() {
       {vehicles.length > 0 && (
         <div className="mb-8 grid gap-4 md:grid-cols-3">
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
-                Vehículos activos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <div className="text-2xl font-bold">{activeVehicles}</div>
               <p className="text-xs text-muted-foreground">
                 de {vehicles.length} totales
@@ -109,27 +80,20 @@ export default async function HostVehiclesPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
-                Reservas totales
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <div className="text-2xl font-bold">{totalBookings}</div>
+              <p className="text-xs text-muted-foreground">
+                Reservas totales
+              </p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">
-                Borradores
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <div className="text-2xl font-bold">
                 {vehicles.filter((v) => v.status === "DRAFT").length}
               </div>
               <p className="text-xs text-muted-foreground">
-                Pendientes de completar
+                Borradores pendientes
               </p>
             </CardContent>
           </Card>
@@ -194,7 +158,7 @@ export default async function HostVehiclesPage() {
                       <div>
                         <span className="text-muted-foreground">Reservas:</span>{" "}
                         <span className="font-medium">
-                          {bookingCounts[vehicle.id] || 0}
+                          {vehicle._count.bookings}
                         </span>
                       </div>
                       <div>

@@ -3,10 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { createBrowserClient } from "@/lib/supabase";
 import { formatPrice } from "@/lib/utils";
 import {
   Calendar,
@@ -61,48 +60,21 @@ export default function DriverBookingsPage() {
   const [activeTab, setActiveTab] = useState("upcoming");
 
   useEffect(() => {
-    async function fetchBookings() {
-      try {
-        const supabase = createBrowserClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) return;
-
-        const { data } = await (supabase as any)
-          .from("bookings")
-          .select(`
-            id,
-            status,
-            startDate,
-            endDate,
-            totalAmount,
-            vehicle:vehicles (
-              id,
-              make,
-              model,
-              year,
-              city,
-              images:vehicle_images (url)
-            ),
-            host:users!bookings_hostId_fkey (fullName)
-          `)
-          .eq("driverId", user.id)
-          .order("startDate", { ascending: true });
-
-        if (data) {
-          setBookings(data);
-        }
-      } catch (error) {
-        console.error("Error fetching bookings:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
     fetchBookings();
   }, []);
+
+  const fetchBookings = async () => {
+    try {
+      const response = await fetch("/api/bookings/driver");
+      if (!response.ok) throw new Error("Error fetching bookings");
+      const data = await response.json();
+      setBookings(data.bookings || []);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const now = new Date();
 
