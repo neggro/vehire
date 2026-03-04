@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { calculateBookingAmount } from "@/lib/bookings";
-import { createPaymentPreference } from "@/lib/mercadopago";
 
 export async function POST(request: NextRequest) {
   try {
@@ -136,11 +135,32 @@ export async function POST(request: NextRequest) {
       estimatedValue: vehicle.estimatedValue,
     });
 
-    // Get driver info for Mercado Pago
+    // Get driver info
     const driver = await prisma.user.findUnique({
       where: { id: user.id },
       select: { email: true, fullName: true },
     });
+
+    // Check if user has an existing pending booking for this vehicle and dates
+    const existingPendingBooking = await prisma.booking.findFirst({
+      where: {
+        driverId: user.id,
+        vehicleId,
+        status: "PENDING",
+        startDate: start,
+        endDate: end,
+      },
+    });
+
+    // If there's an existing pending booking, return it instead of creating a new one
+    if (existingPendingBooking) {
+      return NextResponse.json({
+        bookingId: existingPendingBooking.id,
+        status: "PENDING",
+        totalAmount: existingPendingBooking.totalAmount,
+        message: "Reserva existente recuperada",
+      });
+    }
 
     // Create booking in database
     const booking = await prisma.booking.create({
@@ -173,37 +193,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Create Mercado Pago preference
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const preference = await createPaymentPreference({
-      bookingId: booking.id,
-      title: `${vehicle.make} ${vehicle.model} ${vehicle.year}`,
-      description: `Alquiler desde ${start.toLocaleDateString("es-UY")} hasta ${end.toLocaleDateString("es-UY")}`,
-      amount: calculation.totalAmount,
-      payerEmail: driver?.email || "",
-      externalReference: booking.id,
-      notificationUrl: `${baseUrl}/api/webhooks/mercadopago`,
-      backUrls: {
-        success: `${baseUrl}/booking/success?booking=${booking.id}`,
-        failure: `${baseUrl}/booking/${vehicle.id}?error=payment_failed`,
-        pending: `${baseUrl}/booking/success?booking=${booking.id}&status=pending`,
-      },
-    });
-
-    // Update payment with preference ID
-    await prisma.payment.update({
-      where: { id: payment.id },
-      data: {
-        mpPreferenceId: preference.id,
-      },
-    });
-
+    // Return booking info - payment will be handled by /api/payments
     return NextResponse.json({
       bookingId: booking.id,
-      preferenceId: preference.id,
-      initPoint: process.env.NODE_ENV === "production"
-        ? preference.initPoint
-        : preference.sandboxInitPoint,
+      status: "PENDING",
+      totalAmount: calculation.totalAmount,
+      paymentId: payment.id,
     });
   } catch (error) {
     console.error("Error creating booking:", error);

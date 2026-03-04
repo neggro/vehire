@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendBookingConfirmationEmail, sendNewBookingNotificationToHost } from "@/lib/resend";
+import { verifyWebhookSignature } from "@/lib/mercadopago";
 
 // Mercado Pago webhook handler
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    // Get raw body for signature verification
+    const rawBody = await request.text();
+    const body = JSON.parse(rawBody);
 
     // Verify webhook signature (important for production)
-    // const signature = request.headers.get("x-signature");
-    // if (!verifyWebhookSignature(signature, JSON.stringify(body))) {
-    //   return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-    // }
+    const signature = request.headers.get("x-signature");
+    if (!verifyWebhookSignature(signature, rawBody)) {
+      console.warn("Webhook signature verification failed");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
 
     // Handle different webhook types
     if (body.type === "payment") {

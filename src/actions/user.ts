@@ -114,3 +114,46 @@ export async function ensureUserExists(): Promise<{ success: boolean; userId?: s
     };
   }
 }
+
+export async function updateUserProfile(data: {
+  fullName?: string;
+  phone?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, error: "Debes estar autenticado" };
+    }
+
+    // Validate input
+    if (data.fullName !== undefined && !data.fullName.trim()) {
+      return { success: false, error: "El nombre es requerido" };
+    }
+
+    // Update user in database
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        fullName: data.fullName,
+        phone: data.phone,
+      },
+    });
+
+    revalidatePath("/host/settings");
+    revalidatePath("/dashboard");
+    revalidatePath("/");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    return {
+      success: false,
+      error: "Error al actualizar el perfil",
+    };
+  }
+}

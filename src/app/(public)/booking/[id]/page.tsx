@@ -14,14 +14,13 @@ import {
   Clock,
   CheckCircle,
   Loader2,
-  CreditCard,
   AlertCircle,
   Car,
 } from "lucide-react";
 import { formatPriceFromCents, calculateBookingAmount, type BookingCalculation } from "@/lib/bookings";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { PaymentMethodSelector } from "@/components/payment";
+import { createBrowserClient } from "@/lib/supabase";
 
 interface VehicleData {
   id: string;
@@ -39,21 +38,32 @@ interface VehicleData {
   host: {
     id: string;
     fullName: string;
+    email: string;
   };
   images: { url: string }[];
+}
+
+interface BookingData {
+  id: string;
+  status: string;
+  totalAmount: number;
 }
 
 function BookingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
+  const [isCreatingBooking, setIsCreatingBooking] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vehicle, setVehicle] = useState<VehicleData | null>(null);
+  const [booking, setBooking] = useState<BookingData | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   // Get vehicle ID from URL - the [id] param is the vehicle ID
-  const pathnameParts = window.location.pathname.split("/");
+  const pathnameParts = typeof window !== "undefined" ? window.location.pathname.split("/") : [];
   const vehicleId = pathnameParts[pathnameParts.length - 1];
 
   const startDateParam = searchParams.get("start");
@@ -80,7 +90,7 @@ function BookingContent() {
 
   // Show error from payment failure
   useEffect(() => {
-    if (errorParam === "payment_failed") {
+    if (errorParam === "payment_failed" || errorParam === "payment_rejected") {
       toast({
         title: "Pago fallido",
         description: "El pago no pudo ser procesado. Por favor intenta nuevamente.",
@@ -89,10 +99,20 @@ function BookingContent() {
     }
   }, [errorParam, toast]);
 
-  // Fetch vehicle data
+  // Fetch vehicle data and check auth
   useEffect(() => {
-    const fetchVehicle = async () => {
+    const fetchData = async () => {
       try {
+        // Check auth status using Supabase client directly
+        const supabase = createBrowserClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user?.email) {
+          setUserEmail(user.email);
+        }
+
+        // Fetch vehicle data
         const response = await fetch(`/api/vehicles/${vehicleId}`);
         if (!response.ok) {
           if (response.status === 404) {
@@ -111,7 +131,7 @@ function BookingContent() {
       }
     };
 
-    fetchVehicle();
+    fetchData();
   }, [vehicleId]);
 
   // Calculate booking amounts
@@ -137,10 +157,11 @@ function BookingContent() {
     }
   }, [startDate, endDate, withDelivery, vehicle]);
 
-  const handleConfirmBooking = async () => {
-    if (!vehicle || !calculation) return;
+  // Create booking (called when user initiates payment)
+  const createBooking = async (): Promise<BookingData | null> => {
+    if (!vehicle || !calculation) return null;
 
-    setIsLoading(true);
+    setIsCreatingBooking(true);
 
     try {
       const response = await fetch("/api/bookings", {
@@ -161,13 +182,117 @@ function BookingContent() {
         throw new Error(data.error || "Error al crear la reserva");
       }
 
-      // Redirect to Mercado Pago
-      window.location.href = data.initPoint;
+      // Return the booking (it was created but not paid yet)
+      setBooking({
+        id: data.bookingId || data.id,
+        status: "PENDING",
+        totalAmount: calculation.totalAmount,
+      });
+
+      return {
+        id: data.bookingId || data.id,
+        status: "PENDING",
+        totalAmount: calculation.totalAmount,
+      };
     } catch (err) {
-      setIsLoading(false);
       toast({
         title: "Error",
         description: err instanceof Error ? err.message : "Error al crear la reserva",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setIsCreatingBooking(false);
+    }
+  };
+
+  // Handle card payment
+  const handleCardPayment = async (paymentData: {
+    cardToken: string;
+    paymentMethodId: string;
+    installments: number;
+    issuerId?: string;
+    identificationType: string;
+    identificationNumber: string;
+  }) => {
+    // Create booking first if not exists
+    let currentBooking = booking;
+    if (!currentBooking) {
+      currentBooking = await createBooking();
+      if (!currentBooking) return;
+    }
+
+    setIsProcessingPayment(true);
+
+    try {
+      const response = await fetch("/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId: currentBooking.id,
+          paymentMethod: "card",
+          cardToken: paymentData.cardToken,
+          paymentMethodId: paymentData.paymentMethodId,
+          installments: paymentData.installments,
+          issuerId: paymentData.issuerId,
+          identificationType: paymentData.identificationType,
+          identificationNumber: paymentData.identificationNumber,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al procesar el pago");
+      }
+
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+      }
+    } catch (err) {
+      setIsProcessingPayment(false);
+      toast({
+        title: "Error en el pago",
+        description: err instanceof Error ? err.message : "Error al procesar el pago",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle Mercado Pago (Checkout Pro) payment
+  const handleCheckoutPro = async () => {
+    // Create booking first if not exists
+    let currentBooking = booking;
+    if (!currentBooking) {
+      currentBooking = await createBooking();
+      if (!currentBooking) return;
+    }
+
+    setIsRedirecting(true);
+
+    try {
+      const response = await fetch("/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId: currentBooking.id,
+          paymentMethod: "checkout_pro",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al procesar el pago");
+      }
+
+      // Redirect to Mercado Pago
+      window.location.href = data.initPoint;
+    } catch (err) {
+      setIsRedirecting(false);
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Error al procesar el pago",
         variant: "destructive",
       });
     }
@@ -199,7 +324,7 @@ function BookingContent() {
   }
 
   return (
-  <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-muted/30">
       {/* Header */}
       <div className="border-b bg-background">
         <div className="container py-4">
@@ -341,7 +466,8 @@ function BookingContent() {
             </div>
 
             {/* Sidebar */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-6">
+              {/* Price summary */}
               <Card className="sticky top-24">
                 <CardHeader>
                   <CardTitle>Resumen del precio</CardTitle>
@@ -392,51 +518,52 @@ function BookingContent() {
                       <Separator />
                     </>
                   )}
-
-                  {/* Payment method */}
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Método de pago</p>
-                    <div className="flex items-center gap-2 rounded-lg border p-3">
-                      <CreditCard className="h-5 w-5" />
-                      <span className="text-sm">Mercado Pago</span>
-                    </div>
-                  </div>
-
-                  {/* Confirm button */}
-                  <Button
-                    className="w-full"
-                    size="lg"
-                    onClick={handleConfirmBooking}
-                    disabled={isLoading || !calculation}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Procesando...
-                      </>
-                    ) : calculation ? (
-                      `Pagar ${formatPriceFromCents(calculation.totalAmount)}`
-                    ) : (
-                      "Cargando..."
-                    )}
-                  </Button>
-
-                  {/* Trust badges */}
-                  <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Shield className="h-4 w-4" />
-                      <span>Pago seguro</span>
-                    </div>
-                  </div>
-
-                  <p className="text-center text-xs text-muted-foreground">
-                    Al confirmar, aceptas los{" "}
-                    <Link href="/terms" className="underline">
-                      términos de servicio
-                    </Link>
-                  </p>
                 </CardContent>
               </Card>
+
+              {/* Payment method selector */}
+              {calculation && userEmail && (
+                <PaymentMethodSelector
+                  amount={calculation.totalAmount}
+                  email={userEmail}
+                  onCardPayment={handleCardPayment}
+                  onCheckoutPro={handleCheckoutPro}
+                  isProcessing={isProcessingPayment || isCreatingBooking}
+                  isRedirecting={isRedirecting}
+                />
+              )}
+
+              {/* Login prompt if not authenticated */}
+              {calculation && !userEmail && (
+                <Card>
+                  <CardContent className="p-6">
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Debes iniciar sesión para continuar con la reserva
+                    </p>
+                    <Button
+                      className="w-full"
+                      onClick={() => router.push(`/login?redirect=/booking/${vehicleId}`)}
+                    >
+                      Iniciar sesión
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Trust badges */}
+              <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Shield className="h-4 w-4" />
+                  <span>Pago seguro</span>
+                </div>
+              </div>
+
+              <p className="text-center text-xs text-muted-foreground">
+                Al confirmar, aceptas los{" "}
+                <Link href="/terms" className="underline">
+                  términos de servicio
+                </Link>
+              </p>
             </div>
           </div>
         </div>
