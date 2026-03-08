@@ -89,7 +89,7 @@ export default function DriverBookingsPage() {
   );
 
   const renderBookingCard = (booking: Booking) => (
-    <Link key={booking.id} href={`/booking/${booking.id}`}>
+    <Link key={booking.id} href={`/bookings/${booking.id}`}>
       <Card className="hover:border-primary/50 transition-colors cursor-pointer">
         <CardContent className="p-4">
           <div className="flex gap-4">

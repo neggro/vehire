@@ -71,6 +71,7 @@ model Vehicle {
   deliveryAvailable Boolean        @default(false)
   deliveryPrice     Int?
   status            VehicleStatus  @default(DRAFT)
+  instantBooking    Boolean        @default(false)
   features          String[]
   seats             Int
   transmission      String

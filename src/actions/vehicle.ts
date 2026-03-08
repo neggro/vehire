@@ -29,6 +29,7 @@ interface CreateVehicleInput {
   estimatedValue?: number;
   deliveryAvailable?: boolean;
   deliveryPrice?: number;
+  instantBooking?: boolean;
   mileageLimit?: number;
   // Features
   features: string[];
@@ -99,6 +100,7 @@ export async function createVehicle(
         estimatedValue: input.estimatedValue || null,
         deliveryAvailable: input.deliveryAvailable || false,
         deliveryPrice: input.deliveryPrice || null,
+        instantBooking: input.instantBooking ?? true,
         mileageLimit: input.mileageLimit || null,
         features: input.features,
         status: "DRAFT",
@@ -191,6 +193,7 @@ export async function updateVehicle(
     if (input.estimatedValue !== undefined) updateData.estimatedValue = input.estimatedValue;
     if (input.deliveryAvailable !== undefined) updateData.deliveryAvailable = input.deliveryAvailable;
     if (input.deliveryPrice !== undefined) updateData.deliveryPrice = input.deliveryPrice;
+    if (input.instantBooking !== undefined) updateData.instantBooking = input.instantBooking;
     if (input.mileageLimit !== undefined) updateData.mileageLimit = input.mileageLimit;
     if (input.features !== undefined) updateData.features = input.features;
 

@@ -73,6 +73,7 @@ export default function NewVehiclePage() {
     deliveryAvailable: false,
     deliveryPrice: "",
     mileageLimit: "300",
+    instantBooking: true,
     // Features
     features: [] as string[],
     // Images
@@ -167,6 +168,7 @@ export default function NewVehiclePage() {
         deliveryPrice: formData.deliveryPrice
           ? Math.round(parseFloat(formData.deliveryPrice) * 100)
           : undefined,
+        instantBooking: formData.instantBooking,
         mileageLimit: formData.mileageLimit
           ? parseInt(formData.mileageLimit)
           : undefined,
@@ -587,6 +589,28 @@ export default function NewVehiclePage() {
                 <p className="text-xs text-muted-foreground">
                   Kilómetros incluidos por día. Exceso: $50/km
                 </p>
+              </div>
+
+              <div className="rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Reserva instantánea</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Los conductores pueden reservar sin esperar aprobación
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={formData.instantBooking}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        instantBooking: e.target.checked,
+                      }))
+                    }
+                    className="h-4 w-4"
+                  />
+                </div>
               </div>
 
               <div className="rounded-lg border p-4">

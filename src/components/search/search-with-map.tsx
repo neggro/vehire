@@ -17,7 +17,6 @@ import {
 import {
   Search,
   MapPin,
-  Calendar,
   Users,
   Fuel,
   Gauge,
@@ -143,8 +142,8 @@ function VehicleCard({ vehicle, compact = false }: { vehicle: Vehicle; compact?:
               </span>
               <span className="text-sm text-muted-foreground">/día</span>
             </div>
-            <Button size="sm" asChild>
-              <Link href={`/vehicle/${vehicle.id}`}>Ver más</Link>
+            <Button size="sm">
+              Ver más
             </Button>
           </div>
         </Link>

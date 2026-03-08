@@ -5,8 +5,7 @@ import { createHmac } from "crypto";
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || "",
   options: {
-    timeout: 5000,
-    idempotencyKey: "abc123",
+    timeout: 10000, // Increased timeout
   },
 });
 
@@ -20,7 +19,7 @@ export interface CreatePreferenceParams {
   amount: number; // in cents
   payerEmail: string;
   externalReference: string;
-  notificationUrl: string;
+  notificationUrl?: string; // optional in development
   backUrls: {
     success: string;
     failure: string;
@@ -37,37 +36,51 @@ export interface PreferenceResponse {
 export async function createPaymentPreference(
   params: CreatePreferenceParams
 ): Promise<PreferenceResponse> {
-  const response = await preference.create({
-    body: {
-      items: [
-        {
-          id: params.bookingId,
-          title: params.title,
-          description: params.description,
-          quantity: 1,
-          unit_price: params.amount / 100, // Convert cents to dollars
-          currency_id: "UYU",
-        },
-      ],
-      payer: {
-        email: params.payerEmail,
+  // Check if back_urls are valid (not localhost)
+  const isLocalhost = params.backUrls.success.includes("localhost") ||
+    params.backUrls.success.includes("127.0.0.1");
+
+  const baseBody: Record<string, unknown> = {
+    items: [
+      {
+        id: params.bookingId,
+        title: params.title,
+        description: params.description,
+        quantity: 1,
+        unit_price: params.amount / 100, // Convert cents to dollars
+        currency_id: "UYU",
       },
-      external_reference: params.externalReference,
-      notification_url: params.notificationUrl,
-      back_urls: {
-        success: params.backUrls.success,
-        failure: params.backUrls.failure,
-        pending: params.backUrls.pending,
-      },
-      auto_return: "approved",
-      statement_descriptor: "VEHIRE",
-      expires: true,
-      expiration_date_from: new Date().toISOString(),
-      expiration_date_to: new Date(
-        Date.now() + 30 * 60 * 1000 // 30 minutes
-      ).toISOString(),
+    ],
+    payer: {
+      email: params.payerEmail,
     },
-  });
+    external_reference: params.externalReference,
+    statement_descriptor: "VEHIRE",
+    expires: true,
+    expiration_date_from: new Date().toISOString(),
+    expiration_date_to: new Date(
+      Date.now() + 30 * 60 * 1000 // 30 minutes
+    ).toISOString(),
+  };
+
+  // Only include back_urls and auto_return if not localhost (MP requires valid URLs)
+  if (!isLocalhost) {
+    baseBody.back_urls = {
+      success: params.backUrls.success,
+      failure: params.backUrls.failure,
+      pending: params.backUrls.pending,
+    };
+    baseBody.auto_return = "approved";
+  }
+
+  // Only include notification_url if provided (required in production, optional in sandbox)
+  if (params.notificationUrl) {
+    baseBody.notification_url = params.notificationUrl;
+  }
+
+  console.log("Creating preference with body:", JSON.stringify(baseBody, null, 2));
+
+  const response = await preference.create({ body: baseBody as any });
 
   return {
     id: response.id!,
@@ -157,7 +170,7 @@ export interface CreateCardPaymentParams {
     };
   };
   externalReference: string; // booking ID
-  notificationUrl: string;
+  notificationUrl?: string; // optional in development
 }
 
 export interface CardPaymentResponse {
@@ -239,25 +252,36 @@ export interface InstallmentOption {
 export async function createCardPayment(
   params: CreateCardPaymentParams
 ): Promise<CardPaymentResponse> {
-  const response = await payment.create({
-    body: {
-      transaction_amount: params.transactionAmount / 100, // Convert cents to currency units
-      token: params.token,
-      description: params.description,
-      installments: params.installments,
-      payment_method_id: params.paymentMethodId,
-      issuer_id: params.issuerId,
-      payer: {
-        email: params.payer.email,
-        first_name: params.payer.firstName,
-        last_name: params.payer.lastName,
-        identification: params.payer.identification,
-      },
-      external_reference: params.externalReference,
-      notification_url: params.notificationUrl,
-      statement_descriptor: "VEHIRE",
+  const baseBody: Record<string, unknown> = {
+    transaction_amount: params.transactionAmount / 100, // Convert cents to currency units
+    token: params.token,
+    description: params.description,
+    installments: params.installments,
+    payment_method_id: params.paymentMethodId,
+    issuer_id: params.issuerId,
+    payer: {
+      email: params.payer.email,
+      first_name: params.payer.firstName,
+      last_name: params.payer.lastName,
+      identification: params.payer.identification,
     },
-  });
+    external_reference: params.externalReference,
+    statement_descriptor: "VEHIRE",
+    binary_mode: true, // Simplifies response: approved or rejected only
+  };
+
+  // Only include notification_url if provided (required in production, optional in sandbox)
+  if (params.notificationUrl) {
+    baseBody.notification_url = params.notificationUrl;
+  }
+
+  // Debug log
+  console.log("Creating payment with body:", JSON.stringify({
+    ...baseBody,
+    token: baseBody.token ? `${(baseBody.token as string).substring(0, 8)}...` : undefined,
+  }, null, 2));
+
+  const response = await payment.create({ body: baseBody as any });
 
   return {
     id: response.id!,

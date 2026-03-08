@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, CreditCard, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useMercadoPago } from "@/hooks/use-mercadopago";
 import { formatPriceFromCents } from "@/lib/bookings";
@@ -51,12 +50,11 @@ export function CardPaymentForm({
     getPaymentMethod,
     getInstallments,
     createCardToken,
+    mountCardFields,
+    unmountCardFields,
   } = useMercadoPago();
 
   // Form state
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvv, setCvv] = useState("");
   const [cardholderName, setCardholderName] = useState("");
   const [identificationType, setIdentificationType] = useState("");
   const [identificationNumber, setIdentificationNumber] = useState("");
@@ -69,109 +67,67 @@ export function CardPaymentForm({
     thumbnail: string;
   } | null>(null);
   const [installmentOptions, setInstallmentOptions] = useState<InstallmentOption[]>([]);
-  const [cardValidation, setCardValidation] = useState<{
-    isValid: boolean;
-    message: string;
-  } | null>(null);
+
+  // Secure fields state
+  const [fieldsReady, setFieldsReady] = useState(false);
+  const [cardNumberError, setCardNumberError] = useState<string | null>(null);
+  const [expirationError, setExpirationError] = useState<string | null>(null);
+  const [securityCodeError, setSecurityCodeError] = useState<string | null>(null);
 
   // UI state
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Format card number with spaces
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
-    const matches = v.match(/\d{4,16}/g);
-    const match = (matches && matches[0]) || "";
-    const parts = [];
-
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-
-    return parts.length ? parts.join(" ") : v;
-  };
-
-  // Format expiry date (MM/YY)
-  const formatExpiry = (value: string) => {
-    const v = value.replace(/\s+/g, "").replace(/[^0-9]/gi, "");
-    if (v.length >= 2) {
-      return v.substring(0, 2) + "/" + v.substring(2, 4);
-    }
-    return v;
-  };
-
-  // Handle card number change
-  const handleCardNumberChange = (value: string) => {
-    const formatted = formatCardNumber(value);
-    setCardNumber(formatted);
-
-    // Clear brand when number is cleared
-    if (formatted.length < 6) {
-      setCardBrand(null);
-      setInstallmentOptions([]);
-      setCardValidation(null);
-    }
-  };
-
-  // Detect card brand when BIN is complete
+  // Mount secure fields when SDK is ready
   useEffect(() => {
-    const bin = cardNumber.replace(/\s/g, "").substring(0, 8);
-    if (bin.length >= 6 && !cardBrand) {
-      detectCardBrand(bin);
+    if (!sdkLoading && !sdkError) {
+      mountCardFields(
+        "cardNumber-container",
+        "expiration-container",
+        "securityCode-container",
+        {
+          onCardNumberChange: (data) => {
+            console.log("Card number change:", data);
+            // SDK doesn't provide validation in change event, just clear errors
+            setCardNumberError(null);
+          },
+          onBinChange: async (bin) => {
+            console.log("BIN change:", bin);
+            // When BIN is available, detect card brand
+            if (bin && bin.length >= 6) {
+              const brand = await getPaymentMethod(bin);
+              if (brand) {
+                setCardBrand(brand);
+                // Fetch installment options
+                const installments = await getInstallments(bin, amount);
+                setInstallmentOptions(installments);
+              }
+            } else {
+              setCardBrand(null);
+              setInstallmentOptions([]);
+            }
+          },
+          onExpirationChange: (data) => {
+            console.log("Expiration change:", data);
+            setExpirationError(null);
+          },
+          onSecurityCodeChange: (data) => {
+            console.log("Security code change:", data);
+            setSecurityCodeError(null);
+          },
+        }
+      );
+      setFieldsReady(true);
+
+      return () => {
+        unmountCardFields();
+      };
     }
-  }, [cardNumber, cardBrand]);
-
-  const detectCardBrand = async (bin: string) => {
-    const brand = await getPaymentMethod(bin);
-    if (brand) {
-      setCardBrand(brand);
-      // Fetch installment options
-      const installments = await getInstallments(bin, amount);
-      setInstallmentOptions(installments);
-    }
-  };
-
-  // Validate expiry date
-  const validateExpiry = (value: string): boolean => {
-    const [month, year] = value.split("/");
-    if (!month || !year) return false;
-
-    const m = parseInt(month, 10);
-    const y = parseInt("20" + year, 10);
-
-    if (m < 1 || m > 12) return false;
-
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1;
-
-    if (y < currentYear || (y === currentYear && m < currentMonth)) {
-      return false;
-    }
-
-    return true;
-  };
+  }, [sdkLoading, sdkError, mountCardFields, unmountCardFields, getPaymentMethod, getInstallments, amount]);
 
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
-
-    // Validate form
-    if (!cardNumber || cardNumber.replace(/\s/g, "").length < 15) {
-      setFormError("Ingresa un número de tarjeta válido");
-      return;
-    }
-
-    if (!validateExpiry(expiry)) {
-      setFormError("Ingresa una fecha de vencimiento válida");
-      return;
-    }
-
-    if (!cvv || cvv.length < 3) {
-      setFormError("Ingresa un CVV válido");
-      return;
-    }
 
     if (!cardholderName.trim()) {
       setFormError("Ingresa el nombre del titular");
@@ -188,12 +144,14 @@ export function CardPaymentForm({
       return;
     }
 
+    // Card brand detection indicates the card number was entered
+    // If no cardBrand, the user hasn't entered a valid card number yet
     if (!cardBrand) {
-      setFormError("No se pudo identificar la tarjeta");
+      setFormError("Por favor completa los datos de la tarjeta");
       return;
     }
 
-    // Create card token
+    // Create card token using secure fields - SDK will validate internally
     const cardToken = await createCardToken({
       cardholderName: cardholderName.trim(),
       identificationType,
@@ -201,7 +159,7 @@ export function CardPaymentForm({
     });
 
     if (!cardToken) {
-      setFormError("Error al procesar los datos de la tarjeta. Intenta nuevamente.");
+      setFormError("Error al procesar los datos de la tarjeta. Verifica los datos e intenta nuevamente.");
       return;
     }
 
@@ -241,53 +199,48 @@ export function CardPaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Card Number */}
+      {/* Secure Card Number Field */}
       <div className="space-y-2">
-        <Label htmlFor="cardNumber">Número de tarjeta</Label>
+        <Label>Número de tarjeta</Label>
         <div className="relative">
-          <Input
-            id="cardNumber"
-            value={cardNumber}
-            onChange={(e) => handleCardNumberChange(e.target.value)}
-            placeholder="1234 5678 9012 3456"
-            maxLength={19}
-            className="pr-12"
-            disabled={isProcessing}
+          <div
+            id="cardNumber-container"
+            className={`h-10 rounded-md border bg-background pr-12 ${cardNumberError ? "border-destructive" : "border-input"}`}
           />
           {cardBrand && (
             <img
               src={cardBrand.thumbnail}
               alt={cardBrand.name}
-              className="absolute right-3 top-1/2 -translate-y-1/2 h-6"
+              className="absolute right-3 top-1/2 -translate-y-1/2 h-6 pointer-events-none"
             />
           )}
         </div>
+        {cardNumberError && (
+          <p className="text-xs text-destructive">{cardNumberError}</p>
+        )}
       </div>
 
-      {/* Expiry and CVV */}
+      {/* Secure Expiry and CVV Fields */}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="expiry">Vencimiento</Label>
-          <Input
-            id="expiry"
-            value={expiry}
-            onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-            placeholder="MM/YY"
-            maxLength={5}
-            disabled={isProcessing}
+          <Label>Vencimiento</Label>
+          <div
+            id="expiration-container"
+            className={`h-10 rounded-md border bg-background ${expirationError ? "border-destructive" : "border-input"}`}
           />
+          {expirationError && (
+            <p className="text-xs text-destructive">{expirationError}</p>
+          )}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="cvv">CVV</Label>
-          <Input
-            id="cvv"
-            value={cvv}
-            onChange={(e) => setCvv(e.target.value.replace(/\D/g, ""))}
-            placeholder="123"
-            maxLength={4}
-            type="password"
-            disabled={isProcessing}
+          <Label>CVV</Label>
+          <div
+            id="securityCode-container"
+            className={`h-10 rounded-md border bg-background ${securityCodeError ? "border-destructive" : "border-input"}`}
           />
+          {securityCodeError && (
+            <p className="text-xs text-destructive">{securityCodeError}</p>
+          )}
         </div>
       </div>
 
@@ -399,7 +352,12 @@ export function CardPaymentForm({
       )}
 
       {/* Submit button */}
-      <Button type="submit" className="w-full" size="lg" disabled={isProcessing}>
+      <Button
+        type="submit"
+        className="w-full"
+        size="lg"
+        disabled={isProcessing || !fieldsReady || !cardBrand}
+      >
         {isProcessing ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

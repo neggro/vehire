@@ -60,6 +60,7 @@ export default async function EditVehiclePage({ params }: PageProps) {
     estimatedValue: vehicle.estimatedValue ? (vehicle.estimatedValue / 100).toString() : "",
     deliveryAvailable: vehicle.deliveryAvailable,
     deliveryPrice: vehicle.deliveryPrice ? (vehicle.deliveryPrice / 100).toString() : "",
+    instantBooking: vehicle.instantBooking,
     mileageLimit: vehicle.mileageLimit?.toString() || "300",
     features: vehicle.features,
     images: vehicle.images.map((img) => img.url),

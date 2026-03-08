@@ -63,10 +63,11 @@ function LoginForm() {
     setIsLoading(true);
     try {
       const supabase = createBrowserClient();
+      const baseUrl = process.env.NEXT_PUBLIC_URL || window.location.origin;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/api/auth/callback?redirect=${encodeURIComponent(redirect)}`,
+          redirectTo: `${baseUrl}/api/auth/callback?redirect=${encodeURIComponent(redirect)}`,
         },
       });
 

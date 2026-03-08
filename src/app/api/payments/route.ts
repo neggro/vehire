@@ -98,7 +98,13 @@ export async function POST(request: NextRequest) {
     // Get app URL for webhooks and redirects
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const vehicleName = `${booking.vehicle.make} ${booking.vehicle.model}`;
-    const notificationUrl = `${baseUrl}/api/webhooks/mercadopago`;
+
+    // Only use notification URL if it's a public URL (not localhost)
+    // In development without ngrok, webhooks won't work but payments will
+    const isLocalhost = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1");
+    const notificationUrl = isLocalhost
+      ? undefined
+      : `${baseUrl}/api/webhooks/mercadopago`;
 
     // Handle different payment methods
     if (paymentMethod === "card" && cardToken && paymentMethodId) {
@@ -127,7 +133,24 @@ export async function POST(request: NextRequest) {
         notificationUrl,
       };
 
+      console.log("Creating payment with params:", {
+        transactionAmount: paymentParams.transactionAmount,
+        token: paymentParams.token ? `${paymentParams.token.substring(0, 8)}...` : null,
+        paymentMethodId: paymentParams.paymentMethodId,
+        installments: paymentParams.installments,
+        payer: {
+          email: paymentParams.payer.email,
+          identification: paymentParams.payer.identification,
+        },
+      });
+
       const paymentResponse = await createCardPayment(paymentParams);
+
+      console.log("Payment response:", {
+        id: paymentResponse.id,
+        status: paymentResponse.status,
+        statusDetail: paymentResponse.statusDetail,
+      });
 
       // Create or update payment record
       await prisma.payment.upsert({
@@ -223,9 +246,15 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
-    console.error("Payment error:", error);
+    console.error("Payment error:", JSON.stringify(error, null, 2));
+    // Extract more details from Mercado Pago error
+    const mpError = error as { message?: string; error?: string; status?: number; cause?: Array<{ code: number; description: string }> };
     return NextResponse.json(
-      { error: "Error al procesar el pago" },
+      {
+        error: "Error al procesar el pago",
+        details: mpError.message || "Error desconocido",
+        cause: mpError.cause || [],
+      },
       { status: 500 }
     );
   }
