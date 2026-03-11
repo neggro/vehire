@@ -1,6 +1,6 @@
 # Vehire Marketplace - Registro de Progreso
 
-> Última actualización: 2026-02-16
+> Última actualización: 2026-03-10
 
 Este documento lleva un registro detallado de todas las funcionalidades implementadas, comparándolas con el plan original y documentando cambios o adiciones.
 
@@ -553,4 +553,226 @@ Progreso General:         ██████████░░░░░░░░
 - Link a mensajes en el menú de usuario
 - Icono MessageSquare agregado
 
+---
+
+## Nuevos Archivos y Funcionalidades (2026-03-08 a 2026-03-10)
+
+### Integración PayPal
+
+#### API Routes
+- `src/app/api/payments/paypal/orders/route.ts` - Crear órdenes PayPal
+- `src/app/api/payments/paypal/orders/[orderId]/capture/route.ts` - Capturar/autorizar pagos
+- `src/app/api/webhooks/paypal/route.ts` - Webhook para eventos PayPal
+
+#### Librerías
+- `src/lib/paypal.ts` - Cliente PayPal con funciones:
+  - `createOrder()` - Crear orden de pago
+  - `captureOrder()` - Capturar pago (instant booking)
+  - `authorizeOrder()` - Autorizar pago (approval required)
+  - `getOrder()` - Obtener detalles de orden
+  - `mapPayPalStatus()` - Mapear estados de PayPal a estados internos
+
+#### Componentes
+- `src/components/payment/paypal-card-form.tsx` - Formulario de tarjeta para PayPal
+- `src/hooks/use-paypal.ts` - Hook para manejar el flujo de PayPal
+- `src/lib/currency.ts` - Utilidades de conversión de moneda (UYU a USD)
+
+### Booking Flow & Timezone Improvements
+
+#### Schema Changes
+- **PendingReservation** - Modelo para reservas pendientes de pago
+  - `reminderSentAt` (nuevo) - Tracking de recordatorios enviados
+  - `expiresAt` (eliminado) - Ya no expiran por tiempo
+- **Booking** - Campos nuevos:
+  - `pickupTime` - Hora de pickup (formato "HH:mm")
+  - `returnTime` - Hora de return (formato "HH:mm")
+  - `timezone` - Zona horaria de la reserva
+- **EmailSettings** - Preferencias de email del usuario
+  - `bookingReminders` - Recordatorios de reservas pendientes
+  - `marketingEmails` - Emails de marketing
+  - `bookingConfirmations` - Confirmaciones de reserva
+  - `bookingCancellations` - Cancelaciones
+  - `hostNotifications` - Notificaciones de anfitrión
+  - `paymentReceipts` - Recibos de pago
+  - `reviewReminders` - Recordatorios de reseñas
+
+#### API Routes
+- `src/app/api/pending-reservations/route.ts` - CRUD de pending reservations
+  - GET: Listar pending reservations del usuario
+  - POST: Crear nueva pending reservation
+  - DELETE: Cancelar pending reservation
+- `src/app/api/pending-reservations/[id]/route.ts` - Operaciones por ID
+  - GET: Obtener pending reservation específica
+  - DELETE: Cancelar pending reservation
+- `src/app/api/email-settings/route.ts` - Preferencias de email
+  - GET: Obtener configuración
+  - PATCH: Actualizar preferencias
+
+#### Componentes UI
+- `src/components/ui/time-picker.tsx` - Selector de hora
+  - TimePicker: Dropdown con horarios de 08:00 a 20:00
+  - TimeDisclaimer: Notas sobre seguro y tiempo de gracia
+- `src/components/ui/switch.tsx` - Toggle switch para configuración
+
+#### Librerías
+- `src/lib/timezone.ts` - Utilidades de zona horaria
+  - `toUTC()` - Convertir fecha+hora a UTC
+  - `formatDateInTimezone()` - Formatear fecha en timezone
+  - `getDateInTimezone()` - Obtener fecha en timezone
+  - `generateTimeSlots()` - Generar slots de tiempo
+  - `calculateDays()` - Calcular días entre fechas
+
+#### Páginas
+- `src/app/(dashboard)/dashboard/settings/page.tsx` - Configuración de emails
+- Dashboard actualizado con sección "Reservas pendientes de pago"
+
+#### Sistema de Notificaciones
+- `src/lib/email-notifications.ts` - Servicio de notificaciones
+  - `notifyPendingReservationHolders()` - Notificar usuarios con reservas conflictivas
+  - Busca vehículos similares disponibles
+  - Envía email con alternativas cuando otro usuario reserva
+
+#### Migraciones
+- `prisma/migrations/20260308053538_paypal/` - Schema PayPal
+- `prisma/migrations/20260310_add_pending_reservation/` - PendingReservation inicial
+- `prisma/migrations/20260310_pending_reservations_v2/` - Cambios sin expiración
+
+### Fixes y Mejoras
+
+#### Navegación Client-Side
+- Fix: Uso de `useParams()` en lugar de `window.location.pathname` para obtener IDs de ruta
+- Archivo afectado: `src/app/(public)/booking/[id]/page.tsx`
+
+#### Pagos
+- Actualizado flujo de pagos para usar pending reservations
+- Verificación de disponibilidad al momento del pago (no antes)
+- Creación de booking solo después de pago exitoso
+
+---
+
+## Arquitectura del Flujo de Reservas (Actualizado)
+
+### Flujo Anterior
+```
+1. Usuario selecciona fechas → Crea Booking (PENDING)
+2. Usuario paga → Booking se confirma
+3. Si pago falla → Booking queda huérfano bloqueando fechas
+```
+
+### Flujo Nuevo
+```
+1. Usuario selecciona fechas/tiempos → Crea PendingReservation
+2. PendingReservation NO bloquea el vehículo
+3. Usuario va a pagar
+4. Al pagar:
+   a. Verifica disponibilidad (primero en pagar gana)
+   b. Si disponible → Crea Booking + Procesa pago
+   c. Si no disponible → Error con vehículos similares
+5. Si otro usuario tenía pending reservation conflictiva:
+   → Recibe email con vehículos similares
+```
+
+### Ventajas
+- **First come, first serve**: El primero en pagar obtiene el vehículo
+- **Sin bloqueos**: Pending reservations no bloquean disponibilidad
+- **Recovery**: Usuario puede continuar reserva pendiente días después
+- **Marketing**: Emails con vehículos similares cuando se pierde una reserva
+
+---
+
+## Variables de Entorno Actualizadas
+
+```env
+# PayPal (nuevo)
+PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+NEXT_PUBLIC_PAYPAL_CLIENT_ID=
+
+# Mercadopago (existente)
+MP_ACCESS_TOKEN=
+MP_PUBLIC_KEY=
+
+# App
+NEXT_PUBLIC_APP_URL=
+NEXT_PUBLIC_APP_NAME=Vehire
+```
+
+---
+
+## Historial de Actualizaciones
+
+| Fecha | Cambios |
+|-------|---------|
+| 2026-02-16 | Creación inicial del documento. Registro de Fase 1 ~85% completada |
+| 2026-02-16 | Implementación completa de upload de imágenes con Supabase Storage |
+| 2026-02-16 | Creación de RLS policies SQL para Supabase |
+| 2026-02-16 | Server Actions para crear/actualizar/eliminar vehículos |
+| 2026-02-16 | API route para upload de archivos a Supabase Storage |
+| 2026-02-16 | Fix: Trigger SQL para crear usuarios automáticamente en OAuth |
+| 2026-02-16 | Fix: Página de onboarding para hosts (/host/onboarding) |
+| 2026-02-16 | Fix: Server actions para ensureUserExists y becomeHost |
+| 2026-02-16 | Docs: Documentación de configuración de emails |
+| 2026-02-16 | Feature: Página de vehículos del host dinámica (sin datos hardcodeados) |
+| 2026-02-16 | Feature: Edición de vehículos completa con formulario multi-paso |
+| 2026-02-16 | Feature: Sistema de acciones de vehículos (pausar/activar/eliminar) |
+| 2026-02-16 | Feature: Calendario de disponibilidad para vehículos |
+| 2026-02-16 | Feature: Sistema de mensajería básico |
+| 2026-02-16 | API: Rutas para disponibilidad, conversaciones y mensajes |
+| 2026-03-08 | Feature: Integración completa con PayPal (orders, capture, authorize) |
+| 2026-03-08 | Feature: Webhooks para PayPal |
+| 2026-03-08 | Feature: Conversión de moneda UYU a USD para PayPal |
+| 2026-03-10 | Feature: PendingReservation model sin expiración |
+| 2026-03-10 | Feature: Selección de hora de pickup/return |
+| 2026-03-10 | Feature: Timezone handling para Uruguay (UTC-3) |
+| 2026-03-10 | Feature: EmailSettings model y página de configuración |
+| 2026-03-10 | Feature: Dashboard con sección de reservas pendientes |
+| 2026-03-10 | Feature: Notificaciones con vehículos similares |
+| 2026-03-10 | Fix: Navegación client-side con useParams() |
+| 2026-03-10 | Architecture: Flujo de reservas "first come, first serve" |
+
+---
+
+## Métricas de Progreso Actualizadas
+
+```
+Fase 1 (MVP Core):        ██████████████████████████  98%
+Fase 2 (Pagos):           ████████████████░░░░░░░░░░  60%
+Fase 3 (IA):              ██░░░░░░░░░░░░░░░░░░░░░░░░  10%
+Fase 4 (Mobile):          ░░░░░░░░░░░░░░░░░░░░░░░░░░   0%
+Fase 5 (Optimization):    ░░░░░░░░░░░░░░░░░░░░░░░░░░   0%
+
+Progreso General:         ████████████████░░░░░░░░░░  55%
+```
+
+**Archivos creados:** ~85+
+**Componentes UI:** 18+
+**Páginas:** 32 rutas
+**API Routes:** 20+
+**Build status:** ✅ Exitoso
+**Deploy target:** Vercel
+
+---
+
+## Notas Técnicas Adicionales
+
+### Decisiones de Diseño - Pending Reservations
+
+1. **Sin expiración por tiempo**: Las pending reservations se mantienen hasta que la fecha de inicio pase
+2. **Rate limiting**: Máximo 5 pending reservations activas por usuario
+3. **Soft hold**: No bloquean disponibilidad para otros usuarios
+4. **Cleanup**: Se pueden eliminar automáticamente cuando `startDate < now`
+
+### Timezone Handling
+
+- **Default**: `America/Montevideo` (UTC-3)
+- **Almacenamiento**: Fechas en UTC, timezone guardado como referencia
+- **Display**: Convertir a timezone local en frontend
+- **Horarios**: Formato "HH:mm" string, interpretados en el timezone del usuario
+
+### Email Marketing Strategy
+
+- **Booking reminders**: Opt-in por defecto
+- **Marketing emails**: Opt-out por defecto
+- **Similar vehicles**: Incluido en notificación de "vehículo no disponible"
+- **Unsubscribe**: Link en todos los emails + página de configuración
 
