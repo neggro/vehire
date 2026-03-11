@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -116,12 +116,8 @@ const paymentStatusLabels: Record<string, string> = {
   FAILED: "Fallido",
 };
 
-export default function BookingDetailsPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const resolvedParams = use(params);
+export default function BookingDetailsPage() {
+  const params = useParams();
   const router = useRouter();
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [userRole, setUserRole] = useState<"driver" | "host" | null>(null);
@@ -129,13 +125,17 @@ export default function BookingDetailsPage({
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const bookingId = params.id as string;
+
   useEffect(() => {
-    fetchBookingDetails();
-  }, [resolvedParams.id]);
+    if (bookingId) {
+      fetchBookingDetails();
+    }
+  }, [bookingId]);
 
   const fetchBookingDetails = async () => {
     try {
-      const response = await fetch(`/api/bookings/${resolvedParams.id}`);
+      const response = await fetch(`/api/bookings/${bookingId}`);
       if (!response.ok) {
         if (response.status === 404) {
           setError("Reserva no encontrada");

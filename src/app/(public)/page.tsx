@@ -356,7 +356,7 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
-                <Link href="/register">Crear cuenta gratis</Link>
+                <Link href="/login">Crear cuenta gratis</Link>
               </Button>
             </div>
           </div>

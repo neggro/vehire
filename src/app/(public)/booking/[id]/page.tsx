@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,8 @@ import { formatPriceFromCents, calculateBookingAmount, type BookingCalculation }
 import { useToast } from "@/hooks/use-toast";
 import { PaymentMethodSelector } from "@/components/payment";
 import { createBrowserClient } from "@/lib/supabase";
+import { convertUyuToUsd } from "@/lib/currency";
+import { formatDateInTimezone, DEFAULT_TIMEZONE } from "@/lib/timezone";
 
 interface VehicleData {
   id: string;
@@ -52,6 +54,7 @@ interface BookingData {
 function BookingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const params = useParams();
   const { toast } = useToast();
   const [isFetching, setIsFetching] = useState(true);
   const [isCreatingBooking, setIsCreatingBooking] = useState(false);
@@ -62,27 +65,31 @@ function BookingContent() {
   const [booking, setBooking] = useState<BookingData | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  // Get vehicle ID from URL - the [id] param is the vehicle ID
-  const pathnameParts = typeof window !== "undefined" ? window.location.pathname.split("/") : [];
-  const vehicleId = pathnameParts[pathnameParts.length - 1];
+  // Get vehicle ID from route params (reliable during client-side navigation)
+  const vehicleId = params.id as string;
 
   const startDateParam = searchParams.get("start");
   const endDateParam = searchParams.get("end");
+  const pickupTimeParam = searchParams.get("pickupTime");
+  const returnTimeParam = searchParams.get("returnTime");
   const deliveryParam = searchParams.get("delivery");
   const errorParam = searchParams.get("error");
+  const resumeParam = searchParams.get("resume"); // Pending reservation ID to resume
+
+  const [pendingReservationId, setPendingReservationId] = useState<string | null>(resumeParam);
+  const [pickupTime, setPickupTime] = useState(pickupTimeParam || "10:00");
+  const [returnTime, setReturnTime] = useState(returnTimeParam || "10:00");
 
   const [startDate, setStartDate] = useState<Date>(() => {
     if (startDateParam) return new Date(startDateParam);
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(10, 0, 0, 0);
     return tomorrow;
   });
   const [endDate, setEndDate] = useState<Date>(() => {
     if (endDateParam) return new Date(endDateParam);
     const date = new Date();
     date.setDate(date.getDate() + 4);
-    date.setHours(10, 0, 0, 0);
     return date;
   });
   const [withDelivery, setWithDelivery] = useState(deliveryParam === "true");
@@ -98,6 +105,40 @@ function BookingContent() {
       });
     }
   }, [errorParam, toast]);
+
+  // Fetch pending reservation data if resuming
+  useEffect(() => {
+    if (!resumeParam) return;
+
+    const fetchPendingReservation = async () => {
+      try {
+        const response = await fetch(`/api/pending-reservations/${resumeParam}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.pendingReservation) {
+            const pr = data.pendingReservation;
+            setStartDate(new Date(pr.startDate));
+            setEndDate(new Date(pr.endDate));
+            setPickupTime(pr.pickupTime);
+            setReturnTime(pr.returnTime);
+            setWithDelivery(pr.withDelivery);
+            if (pr.deliveryAddress) {
+              setDeliveryAddress(pr.deliveryAddress);
+            }
+            setPendingReservationId(pr.id);
+            toast({
+              title: "Reserva recuperada",
+              description: "Continúa con el proceso de pago.",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching pending reservation:", error);
+      }
+    };
+
+    fetchPendingReservation();
+  }, [resumeParam, toast]);
 
   // Fetch vehicle data and check auth
   useEffect(() => {
@@ -157,22 +198,29 @@ function BookingContent() {
     }
   }, [startDate, endDate, withDelivery, vehicle]);
 
-  // Create booking (called when user initiates payment)
-  const createBooking = async (): Promise<BookingData | null> => {
+  // Create pending reservation (called when user initiates payment)
+  const createPendingReservation = async (): Promise<{ id: string } | null> => {
     if (!vehicle || !calculation) return null;
 
     setIsCreatingBooking(true);
 
     try {
-      const response = await fetch("/api/bookings", {
+      const response = await fetch("/api/pending-reservations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           vehicleId: vehicle.id,
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
+          pickupTime,
+          returnTime,
           withDelivery,
           deliveryAddress: withDelivery ? deliveryAddress : null,
+          baseAmount: calculation.baseAmount,
+          deliveryFee: calculation.deliveryFee,
+          platformFee: calculation.platformFee,
+          depositAmount: calculation.depositAmount,
+          totalAmount: calculation.totalAmount,
         }),
       });
 
@@ -182,18 +230,14 @@ function BookingContent() {
         throw new Error(data.error || "Error al crear la reserva");
       }
 
-      // Return the booking (it was created but not paid yet)
+      // Store pending reservation ID
       setBooking({
-        id: data.bookingId || data.id,
+        id: data.id,
         status: "PENDING",
         totalAmount: calculation.totalAmount,
       });
 
-      return {
-        id: data.bookingId || data.id,
-        status: "PENDING",
-        totalAmount: calculation.totalAmount,
-      };
+      return { id: data.id };
     } catch (err) {
       toast({
         title: "Error",
@@ -215,11 +259,12 @@ function BookingContent() {
     identificationType: string;
     identificationNumber: string;
   }) => {
-    // Create booking first if not exists
-    let currentBooking = booking;
-    if (!currentBooking) {
-      currentBooking = await createBooking();
-      if (!currentBooking) return;
+    // Create pending reservation first if not exists
+    let currentReservation = booking;
+    if (!currentReservation) {
+      const reservation = await createPendingReservation();
+      if (!reservation) return;
+      currentReservation = { id: reservation.id, status: "PENDING", totalAmount: calculation?.totalAmount || 0 };
     }
 
     setIsProcessingPayment(true);
@@ -229,7 +274,7 @@ function BookingContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          bookingId: currentBooking.id,
+          pendingReservationId: currentReservation.id,
           paymentMethod: "card",
           cardToken: paymentData.cardToken,
           paymentMethodId: paymentData.paymentMethodId,
@@ -261,11 +306,12 @@ function BookingContent() {
 
   // Handle Mercado Pago (Checkout Pro) payment
   const handleCheckoutPro = async () => {
-    // Create booking first if not exists
-    let currentBooking = booking;
-    if (!currentBooking) {
-      currentBooking = await createBooking();
-      if (!currentBooking) return;
+    // Create pending reservation first if not exists
+    let currentReservation = booking;
+    if (!currentReservation) {
+      const reservation = await createPendingReservation();
+      if (!reservation) return;
+      currentReservation = { id: reservation.id, status: "PENDING", totalAmount: calculation?.totalAmount || 0 };
     }
 
     setIsRedirecting(true);
@@ -275,7 +321,7 @@ function BookingContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          bookingId: currentBooking.id,
+          pendingReservationId: currentReservation.id,
           paymentMethod: "checkout_pro",
         }),
       });
@@ -292,6 +338,63 @@ function BookingContent() {
       setIsRedirecting(false);
       toast({
         title: "Error",
+        description: err instanceof Error ? err.message : "Error al procesar el pago",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Create PayPal order
+  const createPayPalOrder = async (): Promise<string> => {
+    // Create pending reservation first if not exists
+    let currentReservation = booking;
+    if (!currentReservation) {
+      const reservation = await createPendingReservation();
+      if (!reservation) {
+        throw new Error("Error al crear la reserva");
+      }
+      currentReservation = { id: reservation.id, status: "PENDING", totalAmount: calculation?.totalAmount || 0 };
+    }
+
+    const response = await fetch("/api/payments/paypal/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pendingReservationId: currentReservation.id,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Error al crear la orden de PayPal");
+    }
+
+    return data.orderId;
+  };
+
+  // Handle PayPal order approval
+  const handlePayPalApprove = async (orderId: string) => {
+    setIsProcessingPayment(true);
+
+    try {
+      const response = await fetch(`/api/payments/paypal/orders/${orderId}/capture`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al capturar el pago");
+      }
+
+      if (data.redirectUrl) {
+        window.location.href = data.redirectUrl;
+      }
+    } catch (err) {
+      setIsProcessingPayment(false);
+      toast({
+        title: "Error en el pago",
         description: err instanceof Error ? err.message : "Error al procesar el pago",
         variant: "destructive",
       });
@@ -381,7 +484,7 @@ function BookingContent() {
               {/* Dates */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Fechas</CardTitle>
+                  <CardTitle className="text-lg">Fechas y horarios</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
@@ -391,11 +494,14 @@ function BookingContent() {
                         <span className="text-sm">Retiro</span>
                       </div>
                       <p className="font-medium">
-                        {startDate.toLocaleDateString("es-UY", {
+                        {formatDateInTimezone(startDate, {
                           weekday: "short",
                           day: "numeric",
                           month: "short",
                         })}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {pickupTime} hs
                       </p>
                     </div>
                     <div className="rounded-lg border p-4">
@@ -404,14 +510,20 @@ function BookingContent() {
                         <span className="text-sm">Devolución</span>
                       </div>
                       <p className="font-medium">
-                        {endDate.toLocaleDateString("es-UY", {
+                        {formatDateInTimezone(endDate, {
                           weekday: "short",
                           day: "numeric",
                           month: "short",
                         })}
                       </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {returnTime} hs
+                      </p>
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    * La hora es referencial. Se coordinará la hora exacta con el anfitrión.
+                  </p>
                 </CardContent>
               </Card>
 
@@ -468,7 +580,7 @@ function BookingContent() {
             {/* Sidebar */}
             <div className="lg:col-span-2 space-y-6">
               {/* Price summary */}
-              <Card className="sticky top-24">
+              <Card className="top-24">
                 <CardHeader>
                   <CardTitle>Resumen del precio</CardTitle>
                   <CardDescription>
@@ -528,6 +640,8 @@ function BookingContent() {
                   email={userEmail}
                   onCardPayment={handleCardPayment}
                   onCheckoutPro={handleCheckoutPro}
+                  onPayPalOrder={handlePayPalApprove}
+                  createPayPalOrder={createPayPalOrder}
                   isProcessing={isProcessingPayment || isCreatingBooking}
                   isRedirecting={isRedirecting}
                 />

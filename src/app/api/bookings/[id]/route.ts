@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { captureAuthorization, voidAuthorization } from "@/lib/paypal";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -63,6 +64,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             id: true,
             status: true,
             mpStatus: true,
+            paypalStatus: true,
+            paypalIntent: true,
             amount: true,
             platformFee: true,
             hostPayout: true,
@@ -122,20 +125,98 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "Status required" }, { status: 400 });
     }
 
-    // Verify the booking belongs to this user (as host)
+    // Get the booking with payment info
     const booking = await prisma.booking.findUnique({
       where: { id },
-      select: { hostId: true },
+      include: {
+        host: { select: { id: true } },
+        payment: true,
+      },
     });
 
     if (!booking || booking.hostId !== user.id) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    // Handle PayPal authorization capture when host approves
+    if (status === "CONFIRMED" && booking.payment) {
+      const payment = booking.payment;
+
+      // If payment is authorized through PayPal, capture it now
+      if (
+        payment.provider === "PAYPAL" &&
+        payment.paypalIntent === "AUTHORIZE" &&
+        payment.paypalAuthorizationId &&
+        payment.status === "PROCESSING"
+      ) {
+        console.log("Capturing authorized PayPal payment:", payment.paypalAuthorizationId);
+
+        try {
+          const captureResult = await captureAuthorization(payment.paypalAuthorizationId);
+
+          // Update payment record
+          await prisma.payment.update({
+            where: { id: payment.id },
+            data: {
+              paypalCaptureId: captureResult.id,
+              paypalStatus: captureResult.status,
+              status: "HELD",
+              paidAt: new Date(),
+            },
+          });
+
+          console.log("PayPal authorization captured:", captureResult.id, captureResult.status);
+        } catch (captureError) {
+          console.error("Failed to capture PayPal authorization:", captureError);
+          return NextResponse.json(
+            { error: "Error al capturar el pago autorizado" },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
+    // Handle PayPal authorization void when rejecting
+    if (status === "CANCELLED" && booking.payment) {
+      const payment = booking.payment;
+
+      // If payment is authorized through PayPal, void it
+      if (
+        payment.provider === "PAYPAL" &&
+        payment.paypalIntent === "AUTHORIZE" &&
+        payment.paypalAuthorizationId &&
+        payment.status === "PROCESSING"
+      ) {
+        console.log("Voiding authorized PayPal payment:", payment.paypalAuthorizationId);
+
+        try {
+          await voidAuthorization(payment.paypalAuthorizationId);
+
+          // Update payment record
+          await prisma.payment.update({
+            where: { id: payment.id },
+            data: {
+            paypalStatus: "VOIDED",
+            status: "REFUNDED",
+          },
+          });
+
+          console.log("PayPal authorization voided");
+        } catch (voidError) {
+          console.error("Failed to void PayPal authorization:", voidError);
+          // Continue with cancellation even if void fails
+        }
+      }
+    }
+
     // Update the booking status
     const updated = await prisma.booking.update({
       where: { id },
-      data: { status },
+      data: {
+        status,
+        cancelledAt: status === "CANCELLED" ? new Date() : null,
+        cancelledBy: status === "CANCELLED" ? user.id : null,
+      },
     });
 
     return NextResponse.json({ booking: updated });

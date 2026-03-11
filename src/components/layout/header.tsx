@@ -132,14 +132,9 @@ export async function Header() {
               </DropdownMenu>
             </>
           ) : (
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" asChild>
-                <Link href="/login">Iniciar sesión</Link>
-              </Button>
-              <Button asChild className="hidden sm:flex">
-                <Link href="/register">Registrarse</Link>
-              </Button>
-            </div>
+            <Button variant="ghost" asChild>
+              <Link href="/login">Ingresar</Link>
+            </Button>
           )}
 
           {/* Mobile menu button */}

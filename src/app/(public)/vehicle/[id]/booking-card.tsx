@@ -13,6 +13,8 @@ import { formatPriceFromCents, calculateBookingAmount, type BookingCalculation }
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { TimePicker, TimeDisclaimer } from "@/components/ui/time-picker";
+import { getDateInTimezone, DEFAULT_TIMEZONE } from "@/lib/timezone";
 
 interface VehicleData {
   id: string;
@@ -37,17 +39,19 @@ export function BookingCard({ vehicle }: BookingCardProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Dates - default to tomorrow and +3 days
+  // Time selection - default to 10:00
+  const [pickupTime, setPickupTime] = useState("10:00");
+  const [returnTime, setReturnTime] = useState("10:00");
+
+  // Dates - default to tomorrow and +3 days (using timezone-aware dates)
   const [startDate, setStartDate] = useState<Date>(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(10, 0, 0, 0);
     return tomorrow;
   });
   const [endDate, setEndDate] = useState<Date>(() => {
     const date = new Date();
     date.setDate(date.getDate() + 4);
-    date.setHours(10, 0, 0, 0);
     return date;
   });
   const [withDelivery, setWithDelivery] = useState(false);
@@ -82,6 +86,8 @@ export function BookingCard({ vehicle }: BookingCardProps) {
     const params = new URLSearchParams({
       start: startDate.toISOString(),
       end: endDate.toISOString(),
+      pickupTime,
+      returnTime,
       delivery: withDelivery.toString(),
     });
 
@@ -93,7 +99,7 @@ export function BookingCard({ vehicle }: BookingCardProps) {
   const isPaused = vehicle.status === "PAUSED";
 
   return (
-    <Card className="sticky top-24">
+    <Card className="top-24">
       <CardHeader>
         <div className="flex items-baseline justify-between">
           <div>
@@ -114,11 +120,10 @@ export function BookingCard({ vehicle }: BookingCardProps) {
             <label className="text-xs text-muted-foreground">Retiro</label>
             <input
               type="date"
-              value={format(startDate, "yyyy-MM-dd")}
-              min={format(new Date(), "yyyy-MM-dd")}
+              value={getDateInTimezone(startDate, DEFAULT_TIMEZONE)}
+              min={getDateInTimezone(new Date(), DEFAULT_TIMEZONE)}
               onChange={(e) => {
-                const newStart = new Date(e.target.value);
-                newStart.setHours(10, 0, 0, 0);
+                const newStart = new Date(e.target.value + "T12:00:00");
                 setStartDate(newStart);
                 if (newStart >= endDate) {
                   const newEnd = new Date(newStart);
@@ -128,22 +133,38 @@ export function BookingCard({ vehicle }: BookingCardProps) {
               }}
               className="w-full bg-transparent text-sm focus:outline-none"
             />
+            <div className="mt-2">
+              <TimePicker
+                value={pickupTime}
+                onChange={setPickupTime}
+                disabled={!isAvailable}
+              />
+            </div>
           </div>
           <div className="rounded-lg border p-3">
             <label className="text-xs text-muted-foreground">Devolución</label>
             <input
               type="date"
-              value={format(endDate, "yyyy-MM-dd")}
-              min={format(startDate, "yyyy-MM-dd")}
+              value={getDateInTimezone(endDate, DEFAULT_TIMEZONE)}
+              min={getDateInTimezone(startDate, DEFAULT_TIMEZONE)}
               onChange={(e) => {
-                const newEnd = new Date(e.target.value);
-                newEnd.setHours(10, 0, 0, 0);
+                const newEnd = new Date(e.target.value + "T12:00:00");
                 setEndDate(newEnd);
               }}
               className="w-full bg-transparent text-sm focus:outline-none"
             />
+            <div className="mt-2">
+              <TimePicker
+                value={returnTime}
+                onChange={setReturnTime}
+                disabled={!isAvailable}
+              />
+            </div>
           </div>
         </div>
+
+        {/* Time disclaimer */}
+        <TimeDisclaimer />
 
         {/* Location */}
         <div className="rounded-lg border p-3">

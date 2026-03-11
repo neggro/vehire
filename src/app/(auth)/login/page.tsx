@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import { createBrowserClient } from "@/lib/supabase";
 import { APP_NAME } from "@/constants";
-import { Car, Loader2 } from "lucide-react";
+import { Car, Loader2, Mail } from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
@@ -19,35 +19,38 @@ function LoginForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
       const supabase = createBrowserClient();
-      const { error } = await supabase.auth.signInWithPassword({
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+
+      const { error } = await supabase.auth.signInWithOtp({
         email,
-        password,
+        options: {
+          emailRedirectTo: `${baseUrl}/api/auth/callback?redirect=${encodeURIComponent(redirect)}`,
+        },
       });
 
       if (error) {
         toast({
-          title: "Error al iniciar sesión",
+          title: "Error",
           description: error.message,
           variant: "destructive",
         });
+        setIsLoading(false);
         return;
       }
 
+      setMagicLinkSent(true);
       toast({
-        title: "Sesión iniciada",
-        description: "Redirigiendo...",
+        title: "Enlace enviado",
+        description: "Revisa tu correo para continuar",
       });
-
-      router.push(redirect);
-      router.refresh();
     } catch (error) {
       toast({
         title: "Error",
@@ -63,7 +66,7 @@ function LoginForm() {
     setIsLoading(true);
     try {
       const supabase = createBrowserClient();
-      const baseUrl = process.env.NEXT_PUBLIC_URL || window.location.origin;
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -89,6 +92,39 @@ function LoginForm() {
     }
   };
 
+  // Show success message after magic link is sent
+  if (magicLinkSent) {
+    return (
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <Link href="/" className="mx-auto mb-4 flex items-center gap-2">
+            <Car className="h-8 w-8 text-primary" />
+            <span className="text-2xl font-bold">{APP_NAME}</span>
+          </Link>
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+            <Mail className="h-8 w-8 text-primary" />
+          </div>
+          <CardTitle className="text-2xl">Revisa tu correo</CardTitle>
+          <CardDescription>
+            Hemos enviado un enlace mágico a <strong>{email}</strong>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            Haz clic en el enlace del correo para iniciar sesión. El enlace expira en 24 horas.
+          </p>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setMagicLinkSent(false)}
+          >
+            Usar otro correo
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="text-center">
@@ -96,12 +132,12 @@ function LoginForm() {
           <Car className="h-8 w-8 text-primary" />
           <span className="text-2xl font-bold">{APP_NAME}</span>
         </Link>
-        <CardTitle className="text-2xl">Bienvenido de vuelta</CardTitle>
+        <CardTitle className="text-2xl">Ingresa a {APP_NAME}</CardTitle>
         <CardDescription>
-          Ingresa a tu cuenta para continuar
+          Usa tu correo o Google para continuar
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleLogin}>
+      <form onSubmit={handleMagicLink}>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Correo electrónico</Label>
@@ -113,31 +149,16 @@ function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
               required
               disabled={isLoading}
+              autoComplete="email"
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={isLoading}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <Link
-              href="/forgot-password"
-              className="text-sm text-primary hover:underline"
-            >
-              ¿Olvidaste tu contraseña?
-            </Link>
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Iniciar sesión
+            {isLoading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Mail className="mr-2 h-4 w-4" />
+            )}
+            Enviar enlace mágico
           </Button>
         </CardContent>
       </form>
@@ -179,10 +200,10 @@ function LoginForm() {
           </svg>
           Google
         </Button>
-        <p className="text-center text-sm text-muted-foreground">
-          ¿No tienes cuenta?{" "}
-          <Link href="/register" className="text-primary hover:underline">
-            Regístrate
+        <p className="text-center text-xs text-muted-foreground">
+          Al continuar, aceptas nuestros{" "}
+          <Link href="/terms" className="text-primary hover:underline">
+            Términos de servicio
           </Link>
         </p>
       </CardFooter>
@@ -198,7 +219,7 @@ function LoginLoading() {
           <Car className="h-8 w-8 text-primary" />
           <span className="text-2xl font-bold">{APP_NAME}</span>
         </div>
-        <CardTitle className="text-2xl">Bienvenido de vuelta</CardTitle>
+        <CardTitle className="text-2xl">Ingresa a {APP_NAME}</CardTitle>
         <CardDescription>Cargando...</CardDescription>
       </CardHeader>
       <CardContent className="flex justify-center py-8">

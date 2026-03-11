@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -18,43 +19,45 @@ export async function GET(request: Request) {
       } = await supabase.auth.getUser();
 
       if (user) {
-        // Check if profile exists - use type assertion to bypass strict typing
-        const { data: existingProfile } = await (supabase as any)
-          .from("users")
-          .select("id")
-          .eq("id", user.id)
-          .single();
+        // Check if user exists in our database
+        const existingUser = await prisma.user.findUnique({
+          where: { id: user.id },
+        });
 
-        // Create profile if it doesn't exist
-        if (!existingProfile) {
+        // Create user if doesn't exist
+        if (!existingUser) {
           const fullName = user.user_metadata?.full_name ||
                           user.user_metadata?.name ||
                           user.email!.split("@")[0];
 
-          await (supabase as any).from("users").insert({
-            id: user.id,
-            email: user.email!,
-            fullName,
-            avatarUrl: user.user_metadata?.avatar_url || null,
-            roles: ["USER", "DRIVER"],
-            kycStatus: "PENDING",
+          await prisma.user.create({
+            data: {
+              id: user.id,
+              email: user.email!,
+              fullName,
+              avatarUrl: user.user_metadata?.avatar_url || null,
+              roles: ["USER", "DRIVER"],
+              kycStatus: "PENDING",
+            },
           });
+
+          console.log("Created new user:", user.id, user.email);
         }
-      }
 
-      const forwardedHost = request.headers.get("x-forwarded-host");
-      const isLocalEnv = process.env.NODE_ENV === "development";
+        const forwardedHost = request.headers.get("x-forwarded-host");
+        const isLocalEnv = process.env.NODE_ENV === "development";
 
-      if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${redirect || next}`);
-      } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${redirect || next}`);
-      } else {
-        return NextResponse.redirect(`${origin}${redirect || next}`);
+        if (isLocalEnv) {
+          return NextResponse.redirect(`${origin}${redirect || next}`);
+        } else if (forwardedHost) {
+          return NextResponse.redirect(`https://${forwardedHost}${redirect || next}`);
+        } else {
+          return NextResponse.redirect(`${origin}${redirect || next}`);
+        }
       }
     }
   }
 
   // Return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`);
+  return NextResponse.redirect(`${origin}/login?error=auth_failed`);
 }

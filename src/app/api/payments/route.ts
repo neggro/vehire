@@ -9,9 +9,10 @@ import {
 import { calculateBookingAmount } from "@/lib/bookings";
 
 interface PaymentRequest {
-  bookingId: string;
-  paymentMethod: "card" | "wallet" | "checkout_pro";
-  // For card payments
+  pendingReservationId: string; // Changed from bookingId
+  paymentMethod: "card" | "wallet" | "checkout_pro" | "paypal";
+  currency?: "UYU" | "USD";
+  // For card payments (Mercado Pago)
   cardToken?: string;
   paymentMethodId?: string; // visa, master, etc.
   installments?: number;
@@ -23,7 +24,7 @@ interface PaymentRequest {
 
 /**
  * POST /api/payments
- * Process a payment for a booking
+ * Process a payment for a pending reservation
  */
 export async function POST(request: NextRequest) {
   try {
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     const body: PaymentRequest = await request.json();
     const {
-      bookingId,
+      pendingReservationId,
       paymentMethod,
       cardToken,
       paymentMethodId,
@@ -51,16 +52,16 @@ export async function POST(request: NextRequest) {
       identificationNumber,
     } = body;
 
-    if (!bookingId) {
+    if (!pendingReservationId) {
       return NextResponse.json(
-        { error: "Se requiere bookingId" },
+        { error: "Se requiere pendingReservationId" },
         { status: 400 }
       );
     }
 
-    // Get the booking with vehicle and user info
-    const booking = await prisma.booking.findUnique({
-      where: { id: bookingId },
+    // Get the pending reservation with vehicle and user info
+    const pendingReservation = await prisma.pendingReservation.findUnique({
+      where: { id: pendingReservationId },
       include: {
         vehicle: {
           include: {
@@ -72,32 +73,55 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (!booking) {
+    if (!pendingReservation) {
       return NextResponse.json(
-        { error: "Reserva no encontrada" },
+        { error: "Reserva pendiente no encontrada" },
         { status: 404 }
       );
     }
 
-    // Verify the booking belongs to the current user
-    if (booking.driverId !== user.id) {
+    // Verify the pending reservation belongs to the current user
+    if (pendingReservation.driverId !== user.id) {
       return NextResponse.json(
         { error: "No autorizado para esta reserva" },
         { status: 403 }
       );
     }
 
-    // Verify booking is in PENDING status
-    if (booking.status !== "PENDING") {
+    // Check if the start date has already passed
+    if (pendingReservation.startDate < new Date()) {
       return NextResponse.json(
-        { error: "Esta reserva ya fue procesada" },
+        { error: "La fecha de inicio ya ha pasado. Por favor, selecciona nuevas fechas." },
+        { status: 400 }
+      );
+    }
+
+    // Check for conflicting bookings (someone else might have booked while this was pending)
+    const conflictingBookings = await prisma.booking.findMany({
+      where: {
+        vehicleId: pendingReservation.vehicleId,
+        status: { in: ["CONFIRMED", "ACTIVE"] },
+        OR: [
+          {
+            AND: [
+              { startDate: { lt: pendingReservation.endDate } },
+              { endDate: { gt: pendingReservation.startDate } },
+            ],
+          },
+        ],
+      },
+    });
+
+    if (conflictingBookings.length > 0) {
+      return NextResponse.json(
+        { error: "El vehículo ya no está disponible para las fechas seleccionadas." },
         { status: 400 }
       );
     }
 
     // Get app URL for webhooks and redirects
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const vehicleName = `${booking.vehicle.make} ${booking.vehicle.model}`;
+    const vehicleName = `${pendingReservation.vehicle.make} ${pendingReservation.vehicle.model}`;
 
     // Only use notification URL if it's a public URL (not localhost)
     // In development without ngrok, webhooks won't work but payments will
@@ -112,16 +136,16 @@ export async function POST(request: NextRequest) {
       // Checkout API - Card Payment
       // ========================================
       const paymentParams: CreateCardPaymentParams = {
-        transactionAmount: booking.totalAmount,
+        transactionAmount: pendingReservation.totalAmount,
         token: cardToken,
-        description: `Alquiler ${vehicleName} - ${booking.startDate.toLocaleDateString("es-UY")} a ${booking.endDate.toLocaleDateString("es-UY")}`,
+        description: `Alquiler ${vehicleName} - ${pendingReservation.startDate.toLocaleDateString("es-UY")} a ${pendingReservation.endDate.toLocaleDateString("es-UY")}`,
         installments,
         paymentMethodId,
         issuerId: issuerId ? parseInt(issuerId, 10) : undefined,
         payer: {
-          email: booking.driver.email,
-          firstName: booking.driver.fullName.split(" ")[0],
-          lastName: booking.driver.fullName.split(" ").slice(1).join(" ") || "",
+          email: pendingReservation.driver.email,
+          firstName: pendingReservation.driver.fullName.split(" ")[0],
+          lastName: pendingReservation.driver.fullName.split(" ").slice(1).join(" ") || "",
           identification: identificationType && identificationNumber
             ? {
                 type: identificationType,
@@ -129,7 +153,7 @@ export async function POST(request: NextRequest) {
               }
             : undefined,
         },
-        externalReference: booking.id,
+        externalReference: pendingReservationId, // Use pending reservation ID as external reference
         notificationUrl,
       };
 
@@ -152,36 +176,45 @@ export async function POST(request: NextRequest) {
         statusDetail: paymentResponse.statusDetail,
       });
 
-      // Create or update payment record
-      await prisma.payment.upsert({
-        where: { bookingId: booking.id },
-        create: {
-          bookingId: booking.id,
-          amount: booking.totalAmount,
-          platformFee: booking.platformFee,
-          hostPayout: booking.baseAmount - booking.platformFee,
-          depositAmount: booking.depositAmount,
-          status: mapPaymentStatus(paymentResponse.status),
-          mpPaymentId: paymentResponse.id.toString(),
-          mpStatus: paymentResponse.status,
-          paidAt: paymentResponse.status === "approved" ? new Date() : null,
-        },
-        update: {
-          mpPaymentId: paymentResponse.id.toString(),
-          mpStatus: paymentResponse.status,
-          status: mapPaymentStatus(paymentResponse.status),
-          paidAt: paymentResponse.status === "approved" ? new Date() : null,
-        },
-      });
-
-      // If payment approved, update booking status
+      // If payment approved, create the booking and delete pending reservation
       if (paymentResponse.status === "approved") {
-        await prisma.booking.update({
-          where: { id: booking.id },
-          data: { status: "CONFIRMED" },
+        const booking = await createBookingFromPendingReservation(pendingReservation);
+
+        // Create payment record
+        await prisma.payment.create({
+          data: {
+            bookingId: booking.id,
+            amount: pendingReservation.totalAmount,
+            platformFee: pendingReservation.platformFee,
+            hostPayout: pendingReservation.baseAmount - pendingReservation.platformFee,
+            depositAmount: pendingReservation.depositAmount,
+            provider: "MERCADOPAGO",
+            currency: "UYU",
+            status: "HELD",
+            mpPaymentId: paymentResponse.id.toString(),
+            mpStatus: paymentResponse.status,
+            paidAt: new Date(),
+          },
+        });
+
+        // Delete the pending reservation
+        await prisma.pendingReservation.delete({
+          where: { id: pendingReservationId },
+        });
+
+        return NextResponse.json({
+          success: true,
+          paymentMethod: "card",
+          payment: {
+            id: paymentResponse.id,
+            status: paymentResponse.status,
+            statusDetail: paymentResponse.statusDetail,
+          },
+          redirectUrl: `${baseUrl}/booking/success?booking=${booking.id}`,
         });
       }
 
+      // For pending/rejected payments, don't create booking yet
       return NextResponse.json({
         success: true,
         paymentMethod: "card",
@@ -191,45 +224,34 @@ export async function POST(request: NextRequest) {
           statusDetail: paymentResponse.statusDetail,
         },
         redirectUrl:
-          paymentResponse.status === "approved"
-            ? `${baseUrl}/booking/success?booking=${booking.id}`
-            : paymentResponse.status === "pending"
-            ? `${baseUrl}/booking/success?booking=${booking.id}&status=pending`
-            : `${baseUrl}/booking/${booking.vehicleId}?error=payment_rejected`,
+          paymentResponse.status === "pending"
+            ? `${baseUrl}/booking/success?pendingReservation=${pendingReservationId}&status=pending`
+            : `${baseUrl}/booking/${pendingReservation.vehicleId}?error=payment_rejected`,
       });
     } else if (paymentMethod === "checkout_pro" || paymentMethod === "wallet") {
       // ========================================
       // Checkout Pro - Redirect to Mercado Pago
       // ========================================
       const preference = await createPaymentPreference({
-        bookingId: booking.id,
-        title: `${vehicleName} ${booking.vehicle.year}`,
-        description: `Alquiler desde ${booking.startDate.toLocaleDateString("es-UY")} hasta ${booking.endDate.toLocaleDateString("es-UY")}`,
-        amount: booking.totalAmount,
-        payerEmail: booking.driver.email,
-        externalReference: booking.id,
+        bookingId: pendingReservationId, // Pass pending reservation ID
+        title: `${vehicleName} ${pendingReservation.vehicle.year}`,
+        description: `Alquiler desde ${pendingReservation.startDate.toLocaleDateString("es-UY")} hasta ${pendingReservation.endDate.toLocaleDateString("es-UY")}`,
+        amount: pendingReservation.totalAmount,
+        payerEmail: pendingReservation.driver.email,
+        externalReference: pendingReservationId, // Use pending reservation ID
         notificationUrl,
         backUrls: {
-          success: `${baseUrl}/booking/success?booking=${booking.id}`,
-          failure: `${baseUrl}/booking/${booking.vehicleId}?error=payment_failed`,
-          pending: `${baseUrl}/booking/success?booking=${booking.id}&status=pending`,
+          success: `${baseUrl}/booking/success?pendingReservation=${pendingReservationId}`,
+          failure: `${baseUrl}/booking/${pendingReservation.vehicleId}?error=payment_failed`,
+          pending: `${baseUrl}/booking/success?pendingReservation=${pendingReservationId}&status=pending`,
         },
       });
 
-      // Create payment record with preference ID
-      await prisma.payment.upsert({
-        where: { bookingId: booking.id },
-        create: {
-          bookingId: booking.id,
-          amount: booking.totalAmount,
-          platformFee: booking.platformFee,
-          hostPayout: booking.baseAmount - booking.platformFee,
-          depositAmount: booking.depositAmount,
-          status: "PENDING",
-          mpPreferenceId: preference.id,
-        },
-        update: {
-          mpPreferenceId: preference.id,
+      // Update pending reservation with preference ID (optional, for tracking)
+      await prisma.pendingReservation.update({
+        where: { id: pendingReservationId },
+        data: {
+          // We could add a preferenceId field if needed
         },
       });
 
@@ -258,6 +280,52 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Create a booking from a pending reservation after successful payment
+ */
+async function createBookingFromPendingReservation(
+  pendingReservation: {
+    id: string;
+    driverId: string;
+    vehicleId: string;
+    startDate: Date;
+    endDate: Date;
+    pickupTime: string;
+    returnTime: string;
+    timezone: string;
+    baseAmount: number;
+    deliveryFee: number | null;
+    platformFee: number;
+    depositAmount: number;
+    totalAmount: number;
+    vehicle: {
+      hostId: string;
+      instantBooking: boolean;
+    };
+  }
+) {
+  const booking = await prisma.booking.create({
+    data: {
+      driverId: pendingReservation.driverId,
+      hostId: pendingReservation.vehicle.hostId,
+      vehicleId: pendingReservation.vehicleId,
+      startDate: pendingReservation.startDate,
+      endDate: pendingReservation.endDate,
+      pickupTime: pendingReservation.pickupTime,
+      returnTime: pendingReservation.returnTime,
+      timezone: pendingReservation.timezone,
+      baseAmount: pendingReservation.baseAmount,
+      deliveryFee: pendingReservation.deliveryFee,
+      platformFee: pendingReservation.platformFee,
+      depositAmount: pendingReservation.depositAmount,
+      totalAmount: pendingReservation.totalAmount,
+      status: pendingReservation.vehicle.instantBooking ? "CONFIRMED" : "PENDING",
+    },
+  });
+
+  return booking;
 }
 
 function mapPaymentStatus(

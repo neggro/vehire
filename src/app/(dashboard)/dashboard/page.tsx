@@ -11,6 +11,7 @@ import {
   Clock,
   TrendingUp,
   AlertCircle,
+  ShoppingCart,
 } from "lucide-react";
 import { createClient as getServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
@@ -48,6 +49,31 @@ export default async function DashboardPage() {
   // Get stats
   const totalBookings = await prisma.booking.count({
     where: { driverId: user!.id },
+  });
+
+  // Get user's pending reservations (future only)
+  const pendingReservations = await prisma.pendingReservation.findMany({
+    where: {
+      driverId: user!.id,
+      startDate: { gte: new Date() },
+    },
+    include: {
+      vehicle: {
+        select: {
+          id: true,
+          make: true,
+          model: true,
+          year: true,
+          city: true,
+          images: {
+            select: { url: true },
+            orderBy: { order: "asc" },
+            take: 1,
+          },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
   });
 
   const isHost = profile?.roles?.includes("HOST");
@@ -157,6 +183,71 @@ export default async function DashboardPage() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pending Reservations (incomplete bookings) */}
+      {pendingReservations.length > 0 && (
+        <Card className="mb-8 border-orange-200 bg-orange-50/50 dark:border-orange-900 dark:bg-orange-950/20">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-orange-500" />
+              <CardTitle className="text-lg">Reservas pendientes de pago</CardTitle>
+            </div>
+            <CardDescription>
+              Tienes {pendingReservations.length} reserva{pendingReservations.length !== 1 ? "s" : ""} sin completar
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {pendingReservations.map((pr) => (
+                <div
+                  key={pr.id}
+                  className="flex items-center gap-4 rounded-lg border bg-card p-3"
+                >
+                  <div className="h-16 w-16 rounded-md bg-muted flex items-center justify-center overflow-hidden">
+                    {pr.vehicle.images[0]?.url ? (
+                      <img
+                        src={pr.vehicle.images[0].url}
+                        alt={`${pr.vehicle.make} ${pr.vehicle.model}`}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Car className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">
+                      {pr.vehicle.make} {pr.vehicle.model} ({pr.vehicle.year})
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {pr.startDate.toLocaleDateString("es-UY", {
+                        day: "numeric",
+                        month: "short",
+                      })} - {pr.endDate.toLocaleDateString("es-UY", {
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </p>
+                    <p className="text-sm font-medium text-primary">
+                      {formatPrice(pr.totalAmount)}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      asChild
+                    >
+                      <Link href={`/booking/${pr.vehicle.id}?resume=${pr.id}`}>
+                        Continuar
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

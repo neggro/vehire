@@ -9,25 +9,44 @@ datasource db {
 }
 
 model User {
-  id               String         @id @default(cuid())
-  email            String         @unique
-  phone            String?
-  fullName         String
-  avatarUrl        String?
-  roles            UserRole[]     @default([USER, DRIVER])
-  kycStatus        KYCStatus      @default(PENDING)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  bookingsAsDriver Booking[]      @relation("DriverBookings")
-  bookingsAsHost   Booking[]      @relation("HostBookings")
-  conversations    Conversation[]
-  kycDocuments     KYCDocument[]
-  reviewsReceived  Review[]       @relation("ReviewsReceived")
-  reviewsGiven     Review[]       @relation("ReviewsGiven")
-  vehicles         Vehicle[]      @relation("HostVehicles")
+  id                   String              @id @default(cuid())
+  email                String              @unique
+  phone                String?
+  fullName             String
+  avatarUrl            String?
+  roles                UserRole[]          @default([USER, DRIVER])
+  kycStatus            KYCStatus           @default(PENDING)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  bookingsAsDriver     Booking[]           @relation("DriverBookings")
+  bookingsAsHost       Booking[]           @relation("HostBookings")
+  conversations        Conversation[]
+  emailSettings        EmailSettings?
+  kycDocuments         KYCDocument[]
+  pendingReservations  PendingReservation[]
+  reviewsReceived      Review[]            @relation("ReviewsReceived")
+  reviewsGiven         Review[]            @relation("ReviewsGiven")
+  vehicles             Vehicle[]           @relation("HostVehicles")
 
   @@index([email])
   @@map("users")
+}
+
+model EmailSettings {
+  id                       String   @id @default(cuid())
+  userId                   String   @unique
+  bookingReminders         Boolean  @default(true)   // Pending reservation reminders
+  marketingEmails          Boolean  @default(false)  // Similar vehicles, offers
+  bookingConfirmations     Boolean  @default(true)   // Booking created/updated
+  bookingCancellations     Boolean  @default(true)   // Booking cancelled
+  hostNotifications        Boolean  @default(true)   // New bookings for hosts
+  paymentReceipts          Boolean  @default(true)   // Payment confirmations
+  reviewReminders          Boolean  @default(true)   // Reminder to leave review
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_settings")
 }
 
 model KYCDocument {
@@ -48,45 +67,46 @@ model KYCDocument {
 }
 
 model Vehicle {
-  id                String         @id @default(cuid())
-  hostId            String
-  make              String
-  model             String
-  year              Int
-  color             String
-  plateNumber       String         @unique
-  vin               String?
-  locationLat       Float
-  locationLng       Float
-  locationPublicLat Float?
-  locationPublicLng Float?
-  city              String
-  state             String?
-  country           String         @default("Uruguay")
-  address           String?
-  description       String?
-  basePriceDay      Int
-  weekendPriceDay   Int?
-  estimatedValue    Int?
-  deliveryAvailable Boolean        @default(false)
-  deliveryPrice     Int?
-  status            VehicleStatus  @default(DRAFT)
-  instantBooking    Boolean        @default(false)
-  features          String[]
-  seats             Int
-  transmission      String
-  fuelType          String
-  mileage           Int?
-  mileageLimit      Int?
-  suggestedPrice    Int?
-  pricingConfidence Float?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  availabilities    Availability[]
-  bookings          Booking[]
-  favorites         Favorite[]
-  images            VehicleImage[]
-  host              User           @relation("HostVehicles", fields: [hostId], references: [id], onDelete: Cascade)
+  id                   String              @id @default(cuid())
+  hostId               String
+  make                 String
+  model                String
+  year                 Int
+  color                String
+  plateNumber          String              @unique
+  vin                  String?
+  locationLat          Float
+  locationLng          Float
+  locationPublicLat    Float?
+  locationPublicLng    Float?
+  city                 String
+  state                String?
+  country              String              @default("Uruguay")
+  address              String?
+  description          String?
+  basePriceDay         Int
+  weekendPriceDay      Int?
+  estimatedValue       Int?
+  deliveryAvailable    Boolean             @default(false)
+  deliveryPrice        Int?
+  status               VehicleStatus       @default(DRAFT)
+  instantBooking       Boolean             @default(false)
+  features             String[]
+  seats                Int
+  transmission         String
+  fuelType             String
+  mileage              Int?
+  mileageLimit         Int?
+  suggestedPrice       Int?
+  pricingConfidence    Float?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  availabilities       Availability[]
+  bookings             Booking[]
+  favorites            Favorite[]
+  images               VehicleImage[]
+  pendingReservations  PendingReservation[]
+  host                 User                @relation("HostVehicles", fields: [hostId], references: [id], onDelete: Cascade)
 
   @@index([hostId])
   @@index([status])
@@ -128,6 +148,9 @@ model Booking {
   vehicleId          String
   startDate          DateTime
   endDate            DateTime
+  pickupTime         String?       // "10:00" format - stored in booking timezone
+  returnTime         String?       // "10:00" format - stored in booking timezone
+  timezone           String        @default("America/Montevideo")
   baseAmount         Int
   deliveryFee        Int?
   platformFee        Int
@@ -164,27 +187,67 @@ model Booking {
   @@map("bookings")
 }
 
+// Holds booking data during payment processing
+// Kept until startDate passes - useful for reminders and "continue booking" feature
+model PendingReservation {
+  id              String    @id @default(cuid())
+  driverId        String
+  vehicleId       String
+  startDate       DateTime
+  endDate         DateTime
+  pickupTime      String    @default("10:00") // "10:00" format
+  returnTime      String    @default("10:00") // "10:00" format
+  timezone        String    @default("America/Montevideo")
+  baseAmount      Int
+  deliveryFee     Int?
+  platformFee     Int
+  depositAmount   Int
+  totalAmount     Int
+  withDelivery    Boolean   @default(false)
+  deliveryAddress String?
+  reminderSentAt  DateTime? // Track when we sent a reminder email
+  createdAt       DateTime  @default(now())
+
+  driver          User      @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, startDate, endDate])
+  @@index([driverId])
+  @@map("pending_reservations")
+}
+
 model Payment {
-  id             String        @id @default(cuid())
-  bookingId      String        @unique
+  id             String          @id @default(cuid())
+  bookingId      String          @unique
   amount         Int
   platformFee    Int
   hostPayout     Int
   depositAmount  Int
+  provider       PaymentProvider @default(MERCADOPAGO)
+  currency       String          @default("UYU")
+  originalAmount Int?            // Original amount in UYU before conversion (for USD payments)
+  // Mercado Pago fields
   mpPreferenceId String?
   mpPaymentId    String?
   mpStatus       String?
-  status         PaymentStatus @default(PENDING)
+  // PayPal fields
+  paypalOrderId       String?
+  paypalCaptureId     String?
+  paypalAuthorizationId String?  // For authorization flow
+  paypalStatus        String?
+  paypalIntent        String?   // "CAPTURE" or "AUTHORIZE"
+  status         PaymentStatus   @default(PENDING)
   escrowStatus   String?
   paidAt         DateTime?
   releasedAt     DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  booking        Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  booking        Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@index([bookingId])
   @@index([status])
   @@index([mpPaymentId])
+  @@index([paypalOrderId])
   @@map("payments")
 }
 
@@ -316,4 +379,9 @@ enum PaymentStatus {
   RELEASED
   REFUNDED
   FAILED
+}
+
+enum PaymentProvider {
+  MERCADOPAGO
+  PAYPAL
 }
