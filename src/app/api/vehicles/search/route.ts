@@ -7,8 +7,8 @@ import { prisma } from "@/lib/prisma";
  *
  * Query params:
  * - city: string (partial match)
- * - startDate: ISO date string
- * - endDate: ISO date string
+ * - startDate: ISO datetime string (includes time)
+ * - endDate: ISO datetime string (includes time)
  * - minPrice: number (in cents)
  * - maxPrice: number (in cents)
  * - transmission: "automatic" | "manual"
@@ -82,27 +82,37 @@ export async function GET(request: NextRequest) {
       const start = new Date(startDate);
       const end = new Date(endDate);
 
-      // Find bookings that overlap with the requested dates
+      // Find bookings that overlap with the requested dates (including time)
       const overlappingBookings = await prisma.booking.findMany({
         where: {
           status: { in: ["PENDING", "CONFIRMED", "ACTIVE"] },
           OR: [
+            // Booking starts before and ends after our start
             {
               AND: [
                 { startDate: { lte: start } },
-                { endDate: { gte: start } },
+                { endDate: { gt: start } },
               ],
             },
+            // Booking starts before and ends after our end
             {
               AND: [
-                { startDate: { lte: end } },
+                { startDate: { lt: end } },
                 { endDate: { gte: end } },
               ],
             },
+            // Booking is completely within our range
             {
               AND: [
                 { startDate: { gte: start } },
                 { endDate: { lte: end } },
+              ],
+            },
+            // Our range is completely within booking
+            {
+              AND: [
+                { startDate: { lte: start } },
+                { endDate: { gte: end } },
               ],
             },
           ],
@@ -112,12 +122,17 @@ export async function GET(request: NextRequest) {
 
       unavailableVehicleIds = Array.from(new Set(overlappingBookings.map((b) => b.vehicleId)));
 
-      // Also check explicit availability blocks
+      // Also check explicit availability blocks (date-only, so extract date part)
+      const startDateOnly = new Date(start);
+      startDateOnly.setHours(0, 0, 0, 0);
+      const endDateOnly = new Date(end);
+      endDateOnly.setHours(0, 0, 0, 0);
+
       const blockedVehicles = await prisma.availability.findMany({
         where: {
           date: {
-            gte: start,
-            lte: end,
+            gte: startDateOnly,
+            lte: endDateOnly,
           },
           isAvailable: false,
         },

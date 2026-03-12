@@ -35,6 +35,8 @@ import {
 } from "@/constants";
 import { formatPrice } from "@/lib/utils";
 import { VehicleMap } from "@/components/map/vehicle-map";
+import { PlacesAutocomplete } from "./places-autocomplete";
+import { DateRangeWithTime } from "./date-range-picker";
 
 interface Vehicle {
   id: string;
@@ -177,113 +179,108 @@ function SearchFilters({
   onClose,
 }: SearchFiltersProps) {
   return (
-    <div className={`space-y-6 ${showMobile ? "p-6" : ""}`}>
+    <div className={`space-y-8 ${showMobile ? "p-6" : ""}`}>
       {showMobile && (
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold">Filtros</h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-bold">Filtros</h2>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+            <X className="h-5 w-5" />
           </Button>
         </div>
       )}
 
-      {/* Location */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Ubicación</label>
-        <div className="relative">
-          <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Ciudad o dirección"
-            className="pl-10"
-            value={filters.city}
-            onChange={(e) => onFilterChange("city", e.target.value)}
-          />
+      <div className="space-y-6">
+        {/* Price Range */}
+        <div className="space-y-3">
+          <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Precio por día ($U)</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+              <Input
+                placeholder="Mín"
+                type="number"
+                value={filters.minPrice}
+                onChange={(e) => onFilterChange("minPrice", e.target.value)}
+                className="pl-7 h-11"
+              />
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+              <Input
+                placeholder="Máx"
+                type="number"
+                value={filters.maxPrice}
+                onChange={(e) => onFilterChange("maxPrice", e.target.value)}
+                className="pl-7 h-11"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Transmission */}
+        <div className="space-y-3">
+          <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Transmisión</label>
+          <Select
+            value={filters.transmission}
+            onValueChange={(value) => onFilterChange("transmission", value)}
+          >
+            <SelectTrigger className="h-11">
+              <SelectValue placeholder="Todas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="automatic">Automática</SelectItem>
+              <SelectItem value="manual">Manual</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Fuel Type */}
+        <div className="space-y-3">
+          <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Combustible</label>
+          <Select
+            value={filters.fuelType}
+            onValueChange={(value) => onFilterChange("fuelType", value)}
+          >
+            <SelectTrigger className="h-11">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="gasoline">Nafta</SelectItem>
+              <SelectItem value="diesel">Diésel</SelectItem>
+              <SelectItem value="electric">Eléctrico</SelectItem>
+              <SelectItem value="hybrid">Híbrido</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Seats */}
+        <div className="space-y-3">
+          <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Capacidad</label>
+          <Select
+            value={filters.minSeats}
+            onValueChange={(value) => onFilterChange("minSeats", value)}
+          >
+            <SelectTrigger className="h-11">
+              <SelectValue placeholder="Cualquiera" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Cualquiera</SelectItem>
+              <SelectItem value="2">2+ personas</SelectItem>
+              <SelectItem value="4">4+ personas</SelectItem>
+              <SelectItem value="5">5+ personas</SelectItem>
+              <SelectItem value="7">7+ personas</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
-      {/* Price Range */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Precio por día ($U)</label>
-        <div className="grid grid-cols-2 gap-2">
-          <Input
-            placeholder="Mín"
-            type="number"
-            value={filters.minPrice}
-            onChange={(e) => onFilterChange("minPrice", e.target.value)}
-          />
-          <Input
-            placeholder="Máx"
-            type="number"
-            value={filters.maxPrice}
-            onChange={(e) => onFilterChange("maxPrice", e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Transmission */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Transmisión</label>
-        <Select
-          value={filters.transmission}
-          onValueChange={(value) => onFilterChange("transmission", value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Todas" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            <SelectItem value="automatic">Automática</SelectItem>
-            <SelectItem value="manual">Manual</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Fuel Type */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Combustible</label>
-        <Select
-          value={filters.fuelType}
-          onValueChange={(value) => onFilterChange("fuelType", value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Todos" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="gasoline">Nafta</SelectItem>
-            <SelectItem value="diesel">Diésel</SelectItem>
-            <SelectItem value="electric">Eléctrico</SelectItem>
-            <SelectItem value="hybrid">Híbrido</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Seats */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Asientos</label>
-        <Select
-          value={filters.minSeats}
-          onValueChange={(value) => onFilterChange("minSeats", value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Cualquiera" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Cualquiera</SelectItem>
-            <SelectItem value="2">2+</SelectItem>
-            <SelectItem value="4">4+</SelectItem>
-            <SelectItem value="5">5+</SelectItem>
-            <SelectItem value="7">7+</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <Button className="w-full" onClick={onApply}>
-          <Search className="mr-2 h-4 w-4" />
+      <div className="pt-4 space-y-3">
+        <Button className="w-full h-12 text-base font-semibold shadow-md" onClick={onApply}>
           Aplicar filtros
         </Button>
-        <Button variant="outline" className="w-full" onClick={onReset}>
+        <Button variant="outline" className="w-full h-12 text-base" onClick={onReset}>
           Limpiar filtros
         </Button>
       </div>
@@ -319,6 +316,24 @@ export default function SearchWithMap() {
     minSeats: "all",
   });
 
+  // Date/time state
+  const [dateRange, setDateRange] = useState<{
+    startDate?: Date;
+    endDate?: Date;
+    startTime: string;
+    endTime: string;
+  }>(() => {
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
+
+    return {
+      startDate: startDateParam ? new Date(startDateParam) : undefined,
+      endDate: endDateParam ? new Date(endDateParam) : undefined,
+      startTime: searchParams.get("startTime") || "10:00",
+      endTime: searchParams.get("endTime") || "10:00",
+    };
+  });
+
   // Search function
   const searchVehicles = useCallback(async (page = 1) => {
     setIsLoading(true);
@@ -326,6 +341,18 @@ export default function SearchWithMap() {
       const params = new URLSearchParams();
 
       if (filters.city) params.append("city", filters.city);
+      if (dateRange.startDate) {
+        const startDateTime = new Date(dateRange.startDate);
+        const [hours, minutes] = dateRange.startTime.split(":");
+        startDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        params.append("startDate", startDateTime.toISOString());
+      }
+      if (dateRange.endDate) {
+        const endDateTime = new Date(dateRange.endDate);
+        const [hours, minutes] = dateRange.endTime.split(":");
+        endDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+        params.append("endDate", endDateTime.toISOString());
+      }
       if (filters.minPrice) params.append("minPrice", filters.minPrice);
       if (filters.maxPrice) params.append("maxPrice", filters.maxPrice);
       if (filters.transmission && filters.transmission !== "all") {
@@ -355,7 +382,7 @@ export default function SearchWithMap() {
     } finally {
       setIsLoading(false);
     }
-  }, [filters, sortBy]);
+  }, [filters, dateRange, sortBy]);
 
   // Initial search and when filters/sort change
   useEffect(() => {
@@ -366,11 +393,28 @@ export default function SearchWithMap() {
   const updateUrl = useCallback(() => {
     const params = new URLSearchParams();
     if (filters.city) params.set("city", filters.city);
+    if (dateRange.startDate) {
+      params.set("startDate", dateRange.startDate.toISOString());
+    }
+    if (dateRange.endDate) {
+      params.set("endDate", dateRange.endDate.toISOString());
+    }
+    if (dateRange.startTime) params.set("startTime", dateRange.startTime);
+    if (dateRange.endTime) params.set("endTime", dateRange.endTime);
     router.push(`/search?${params.toString()}`, { scroll: false });
-  }, [filters.city, router]);
+  }, [filters.city, dateRange, router]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleDateRangeChange = (range: {
+    startDate?: Date;
+    endDate?: Date;
+    startTime: string;
+    endTime: string;
+  }) => {
+    setDateRange(range);
   };
 
   const handleApplyFilters = () => {
@@ -387,6 +431,12 @@ export default function SearchWithMap() {
       transmission: "all",
       fuelType: "all",
       minSeats: "all",
+    });
+    setDateRange({
+      startDate: undefined,
+      endDate: undefined,
+      startTime: "10:00",
+      endTime: "10:00",
     });
     router.push("/search", { scroll: false });
   };
@@ -410,44 +460,93 @@ export default function SearchWithMap() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Search Header */}
-      <div className="border-b bg-background">
+      {/* Search Header - Airbnb Style */}
+      <div className="sticky top-16 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
         <div className="container py-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="relative flex-1">
-              <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por ciudad o ubicación..."
-                className="pl-10"
+          {/* Desktop Layout */}
+          <div className="hidden md:flex items-center w-full max-w-5xl mx-auto bg-background border rounded-full shadow-md hover:shadow-lg transition-all p-1.5 gap-1">
+            {/* Location */}
+            <div className="flex-[1.5] min-w-[280px]">
+              <PlacesAutocomplete
                 value={filters.city}
-                onChange={(e) => handleFilterChange("city", e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleApplyFilters();
-                  }
-                }}
+                onChange={(value) => handleFilterChange("city", value)}
+                placeholder="¿Dónde quieres retirar el vehículo?"
+                variant="ghost"
               />
             </div>
-            <div className="flex gap-2">
+
+            <div className="h-8 w-px bg-border my-auto mx-1" />
+
+            {/* Date Range Picker */}
+            <div className="flex-1 min-w-[240px]">
+              <DateRangeWithTime
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+                startTime={dateRange.startTime}
+                endTime={dateRange.endTime}
+                onChange={handleDateRangeChange}
+                placeholder="¿Cuándo?"
+                className="w-full border-none shadow-none bg-transparent h-12 hover:bg-transparent focus:ring-0"
+              />
+            </div>
+
+            {/* Search Button */}
+            <Button
+              onClick={handleApplyFilters}
+              disabled={isLoading}
+              className="rounded-full h-12 px-6 ml-1 shadow-md hover:shadow-lg transition-all"
+            >
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  <Search className="h-5 w-5 mr-2" />
+                  <span className="font-semibold">Buscar</span>
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Mobile Layout */}
+          <div className="flex md:hidden flex-col gap-3">
+            <div className="flex items-center gap-2 p-1 bg-background border rounded-xl shadow-sm">
+              <PlacesAutocomplete
+                value={filters.city}
+                onChange={(value) => handleFilterChange("city", value)}
+                placeholder="¿A dónde vas?"
+                className="flex-1"
+              />
+              <div className="w-px h-6 bg-border" />
               <Button
-                variant="outline"
-                className="flex-1 md:flex-none lg:hidden"
                 onClick={() => setShowMobileFilters(true)}
+                variant="ghost"
+                size="icon"
+                className="shrink-0"
               >
-                <SlidersHorizontal className="mr-2 h-4 w-4" />
-                Filtros
+                <SlidersHorizontal className="h-4 w-4" />
               </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <DateRangeWithTime
+                startDate={dateRange.startDate}
+                endDate={dateRange.endDate}
+                startTime={dateRange.startTime}
+                endTime={dateRange.endTime}
+                onChange={handleDateRangeChange}
+                placeholder="Fechas"
+                compact
+                className="flex-1 h-11 rounded-xl"
+              />
               <Button
-                className="flex-1 md:flex-none"
                 onClick={handleApplyFilters}
                 disabled={isLoading}
+                className="shrink-0 h-11 px-6 rounded-xl"
               >
                 {isLoading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Search className="mr-2 h-4 w-4" />
+                  <Search className="h-4 w-4" />
                 )}
-                Buscar
               </Button>
             </div>
           </div>
@@ -459,7 +558,7 @@ export default function SearchWithMap() {
         <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
           {/* Filters Sidebar - Desktop */}
           <aside className="hidden lg:block">
-            <Card className="sticky top-4">
+            <Card className="sticky top-36">
               <CardContent className="p-6">
                 <SearchFilters
                   filters={filters}
@@ -542,7 +641,7 @@ export default function SearchWithMap() {
             {!isLoading && vehicles.length === 0 && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">
-                  No se encontraron vehículos con los filtros seleccionados
+                  No se encontraron vehículos disponibles con los filtros seleccionados
                 </p>
                 <Button variant="outline" onClick={handleResetFilters}>
                   Limpiar filtros
@@ -584,10 +683,10 @@ export default function SearchWithMap() {
                 <div className="h-[600px]">
                   <VehicleMap
                     vehicles={vehicles
-                      .filter((v) => v.city) // Only vehicles with location
+                      .filter((v) => v.city)
                       .map((v) => ({
                         id: v.id,
-                        location: { lat: -34.9011, lng: -56.1645 }, // TODO: Get real coordinates
+                        location: { lat: -34.9011, lng: -56.1645 },
                         title: `${v.make} ${v.model}`,
                         price: v.basePriceDay,
                       }))}

@@ -2,13 +2,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { HomeSearchBox } from "@/components/search/home-search-box";
 import {
   Search,
   Shield,
   CreditCard,
   Car,
-  MapPin,
-  Clock,
   Star,
   ArrowRight,
   CheckCircle,
@@ -85,38 +84,7 @@ export default function HomePage() {
             </p>
 
             {/* Search Box */}
-            <div className="mt-10">
-              <Card className="mx-auto max-w-2xl">
-                <CardContent className="p-4">
-                  <form className="flex flex-col gap-4 md:flex-row">
-                    <div className="flex-1">
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <input
-                          type="text"
-                          placeholder="¿Dónde quieres retirar el auto?"
-                          className="h-12 w-full rounded-md border bg-background pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="relative">
-                        <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <input
-                          type="text"
-                          placeholder="Fechas del viaje"
-                          className="h-12 w-full rounded-md border bg-background pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
-                      </div>
-                    </div>
-                    <Button type="submit" size="lg" className="h-12 px-8">
-                      <Search className="mr-2 h-4 w-4" />
-                      Buscar
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
+            <HomeSearchBox />
 
             {/* Popular cities */}
             <div className="mt-6 flex flex-wrap justify-center gap-2">
