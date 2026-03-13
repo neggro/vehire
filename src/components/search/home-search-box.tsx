@@ -41,8 +41,8 @@ export function HomeSearchBox() {
 
   return (
     <div className="mt-10">
-      <Card className="mx-auto max-w-4xl shadow-xl border-none bg-background/80 backdrop-blur-md overflow-visible">
-        <CardContent className="p-2">
+      <Card className="mx-auto max-w-4xl shadow-2xl border-border/30 glass overflow-visible">
+        <CardContent className="p-2.5">
           <form onSubmit={handleSearch} className="flex flex-col gap-2 md:flex-row items-center">
             {/* Location */}
             <div className="flex-[1.5] w-full">
@@ -55,7 +55,7 @@ export function HomeSearchBox() {
               />
             </div>
 
-            <div className="hidden md:block h-8 w-px bg-border" />
+            <div className="hidden md:block h-8 w-px bg-border/60" />
 
             {/* Dates */}
             <div className="flex-1 w-full">
@@ -70,7 +70,7 @@ export function HomeSearchBox() {
               />
             </div>
 
-            <Button type="submit" size="lg" className="h-12 px-8 w-full md:w-auto rounded-lg md:rounded-full">
+            <Button type="submit" size="lg" className="h-12 px-8 w-full md:w-auto rounded-lg md:rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-shadow">
               <Search className="mr-2 h-5 w-5" />
               Buscar
             </Button>

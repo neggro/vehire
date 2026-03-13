@@ -82,10 +82,10 @@ export default async function DashboardPage() {
     <div className="container py-8">
       {/* Welcome Section */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">
+        <h1 className="text-3xl font-bold tracking-tight">
           Hola, {profile?.fullName?.split(" ")[0] || "Usuario"}
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground mt-1">
           Bienvenido a tu panel de control
         </p>
       </div>

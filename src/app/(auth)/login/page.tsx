@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { useToast } from "@/hooks/use-toast";
 import { createBrowserClient } from "@/lib/supabase";
 import { APP_NAME } from "@/constants";
-import { Car, Loader2, Mail } from "lucide-react";
+import { Logo } from "@/components/layout/logo";
+import { Loader2, Mail, Shield, Star, Car } from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
@@ -95,18 +96,17 @@ function LoginForm() {
   // Show success message after magic link is sent
   if (magicLinkSent) {
     return (
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <Link href="/" className="mx-auto mb-4 flex items-center gap-2">
-            <Car className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold">{APP_NAME}</span>
-          </Link>
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+      <Card className="w-full max-w-md border-border/40 shadow-2xl">
+        <CardHeader className="text-center pb-2">
+          <div className="mx-auto mb-6">
+            <Logo size="lg" showText={false} />
+          </div>
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
             <Mail className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Revisa tu correo</CardTitle>
-          <CardDescription>
-            Hemos enviado un enlace mágico a <strong>{email}</strong>
+          <CardTitle className="text-2xl font-display">Revisa tu correo</CardTitle>
+          <CardDescription className="text-base">
+            Hemos enviado un enlace mágico a <strong className="text-foreground">{email}</strong>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-center">
@@ -115,7 +115,7 @@ function LoginForm() {
           </p>
           <Button
             variant="outline"
-            className="w-full"
+            className="w-full rounded-xl h-11"
             onClick={() => setMagicLinkSent(false)}
           >
             Usar otro correo
@@ -126,21 +126,22 @@ function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <Link href="/" className="mx-auto mb-4 flex items-center gap-2">
-          <Car className="h-8 w-8 text-primary" />
-          <span className="text-2xl font-bold">{APP_NAME}</span>
-        </Link>
-        <CardTitle className="text-2xl">Ingresa a {APP_NAME}</CardTitle>
-        <CardDescription>
+    <Card className="w-full max-w-md border-border/40 shadow-2xl">
+      <CardHeader className="text-center pb-2">
+        <div className="mx-auto mb-6">
+          <Logo size="lg" />
+        </div>
+        <CardTitle className="text-2xl font-display">Bienvenido a {APP_NAME}</CardTitle>
+        <CardDescription className="text-base">
           Usa tu correo o Google para continuar
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleMagicLink}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 px-8">
           <div className="space-y-2">
-            <Label htmlFor="email">Correo electrónico</Label>
+            <Label htmlFor="email" className="text-sm font-medium">
+              Correo electrónico
+            </Label>
             <Input
               id="email"
               type="email"
@@ -150,9 +151,10 @@ function LoginForm() {
               required
               disabled={isLoading}
               autoComplete="email"
+              className="h-11 rounded-xl"
             />
           </div>
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full h-11 rounded-xl shadow-sm" disabled={isLoading}>
             {isLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -162,13 +164,13 @@ function LoginForm() {
           </Button>
         </CardContent>
       </form>
-      <CardFooter className="flex flex-col gap-4">
+      <CardFooter className="flex flex-col gap-4 px-8 pb-8">
         <div className="relative w-full">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
+            <span className="w-full border-t border-border/60" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-card px-2 text-muted-foreground">
+            <span className="bg-card px-3 text-muted-foreground tracking-wider">
               O continúa con
             </span>
           </div>
@@ -176,7 +178,7 @@ function LoginForm() {
         <Button
           variant="outline"
           type="button"
-          className="w-full"
+          className="w-full h-11 rounded-xl"
           onClick={handleGoogleLogin}
           disabled={isLoading}
         >
@@ -202,7 +204,7 @@ function LoginForm() {
         </Button>
         <p className="text-center text-xs text-muted-foreground">
           Al continuar, aceptas nuestros{" "}
-          <Link href="/terms" className="text-primary hover:underline">
+          <Link href="/terms" className="text-primary hover:underline underline-offset-4">
             Términos de servicio
           </Link>
         </p>
@@ -213,13 +215,12 @@ function LoginForm() {
 
 function LoginLoading() {
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-md border-border/40 shadow-2xl">
       <CardHeader className="text-center">
-        <div className="mx-auto mb-4 flex items-center gap-2">
-          <Car className="h-8 w-8 text-primary" />
-          <span className="text-2xl font-bold">{APP_NAME}</span>
+        <div className="mx-auto mb-4">
+          <Logo size="lg" />
         </div>
-        <CardTitle className="text-2xl">Ingresa a {APP_NAME}</CardTitle>
+        <CardTitle className="text-2xl font-display">Bienvenido a {APP_NAME}</CardTitle>
         <CardDescription>Cargando...</CardDescription>
       </CardHeader>
       <CardContent className="flex justify-center py-8">
@@ -231,10 +232,64 @@ function LoginLoading() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-12">
-      <Suspense fallback={<LoginLoading />}>
-        <LoginForm />
-      </Suspense>
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-background to-[hsl(var(--gold))]/[0.03]" />
+      <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-primary/[0.06] blur-3xl" />
+      <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-[hsl(var(--gold))]/[0.06] blur-3xl" />
+
+      <div className="container flex min-h-screen relative">
+      {/* Left panel - features (hidden on mobile) */}
+      <div className="hidden lg:flex lg:w-[45%] items-center justify-center p-12 relative">
+        <div className="max-w-md space-y-10">
+          <div>
+            <h2 className="text-3xl font-display font-bold tracking-tight">
+              Tu próximo viaje comienza aquí
+            </h2>
+            <p className="mt-3 text-muted-foreground text-lg leading-relaxed">
+              Accede a cientos de vehículos en todo Uruguay con la confianza de una plataforma segura.
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            {[
+              {
+                icon: Car,
+                title: "Variedad de vehículos",
+                desc: "Desde económicos hasta deportivos de lujo",
+              },
+              {
+                icon: Shield,
+                title: "Totalmente asegurado",
+                desc: "Seguro incluido en cada reserva",
+              },
+              {
+                icon: Star,
+                title: "Comunidad confiable",
+                desc: "Conductores y anfitriones verificados",
+              },
+            ].map((item) => (
+              <div key={item.title} className="flex gap-4">
+                <div className="flex-shrink-0 flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+                  <item.icon className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-display font-semibold">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Right panel - form */}
+      <div className="flex-1 flex items-center justify-center px-4 py-12 relative">
+        <Suspense fallback={<LoginLoading />}>
+          <LoginForm />
+        </Suspense>
+      </div>
+      </div>
     </div>
   );
 }

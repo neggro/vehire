@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Card } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Loader2, Map as MapIcon } from "lucide-react";
+import { loadGoogleMaps } from "@/lib/google-maps";
 
 interface Location {
   lat: number;
@@ -29,6 +29,21 @@ interface VehicleMapProps {
 const DEFAULT_CENTER = { lat: -34.9011, lng: -56.1645 };
 const DEFAULT_ZOOM = 12;
 
+// Build a price-pill SVG data URL to avoid the deprecation of SymbolPath markers
+function buildPriceMarkerIcon(price: string, selected: boolean) {
+  const bg = selected ? "%23d4940a" : "%231a6abf";
+  const w = Math.max(48, price.length * 9 + 24);
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='32'>` +
+    `<rect rx='16' width='${w}' height='32' fill='${bg}' stroke='white' stroke-width='2'/>` +
+    `<text x='50%25' y='50%25' text-anchor='middle' dy='.35em' fill='white' font-size='12' font-weight='700' font-family='system-ui,sans-serif'>${price}</text>` +
+    `</svg>`;
+  return {
+    url: `data:image/svg+xml,${svg}`,
+    scaledSize: new google.maps.Size(w, 32),
+    anchor: new google.maps.Point(w / 2, 16),
+  };
+}
+
 export function VehicleMap({
   vehicles,
   center = DEFAULT_CENTER,
@@ -43,48 +58,25 @@ export function VehicleMap({
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
 
-  // Load Google Maps script
+  // Load Google Maps via singleton loader
   useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-    if (!apiKey) {
-      setError("Google Maps API key not configured");
-      return;
-    }
-
-    // Check if already loaded
-    if (window.google?.maps) {
-      setIsLoaded(true);
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.async = true;
-    script.defer = true;
-
-    script.onload = () => setIsLoaded(true);
-    script.onerror = () => setError("Failed to load Google Maps");
-
-    document.head.appendChild(script);
-
-    return () => {
-      // Cleanup script if component unmounts before loading
-      if (!isLoaded) {
-        document.head.removeChild(script);
-      }
-    };
-  }, [isLoaded]);
+    let cancelled = false;
+    loadGoogleMaps()
+      .then(() => { if (!cancelled) setIsLoaded(true); })
+      .catch((err) => { if (!cancelled) setError(err.message); });
+    return () => { cancelled = true; };
+  }, []);
 
   // Initialize map
   useEffect(() => {
     if (!isLoaded || !mapRef.current || mapInstanceRef.current) return;
 
-    mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+    mapInstanceRef.current = new google.maps.Map(mapRef.current, {
       center,
       zoom,
       disableDefaultUI: true,
       zoomControl: true,
+      gestureHandling: "greedy",
       styles: [
         {
           featureType: "poi",
@@ -95,58 +87,57 @@ export function VehicleMap({
     });
   }, [isLoaded, center, zoom]);
 
-  // Update markers when vehicles change
+  // Update markers when vehicles or selection changes
   useEffect(() => {
     if (!isLoaded || !mapInstanceRef.current) return;
 
     // Clear existing markers
-    markersRef.current.forEach((marker) => marker.setMap(null));
+    markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
-    // Add new markers
     vehicles.forEach((vehicle) => {
-      const marker = new window.google.maps.Marker({
+      const isSelected = selectedVehicleId === vehicle.id;
+      const priceText = `$${Math.round(vehicle.price / 100)}`;
+
+      const marker = new google.maps.Marker({
         position: vehicle.location,
         map: mapInstanceRef.current,
         title: vehicle.title,
-        label: {
-          text: `$${Math.round(vehicle.price / 100)}`,
-          color: "white",
-          fontSize: "12px",
-          fontWeight: "bold",
-        },
-        icon: {
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 20,
-          fillColor: selectedVehicleId === vehicle.id ? "#7c3aed" : "#4f46e5",
-          fillOpacity: 1,
-          strokeColor: "#ffffff",
-          strokeWeight: 2,
-        },
+        icon: buildPriceMarkerIcon(priceText, isSelected),
+        zIndex: isSelected ? 10 : 1,
+        optimized: false,
       });
 
-      if (onMarkerClick) {
-        marker.addListener("click", () => onMarkerClick(vehicle.id));
-      }
-
+      marker.addListener("click", () => onMarkerClick?.(vehicle.id));
       markersRef.current.push(marker);
     });
 
-    // Fit bounds if there are vehicles
+    // Fit bounds
     if (vehicles.length > 0) {
-      const bounds = new window.google.maps.LatLngBounds();
+      const bounds = new google.maps.LatLngBounds();
       vehicles.forEach((v) => bounds.extend(v.location));
       mapInstanceRef.current?.fitBounds(bounds, 50);
     }
   }, [isLoaded, vehicles, selectedVehicleId, onMarkerClick]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = [];
+    };
+  }, []);
+
   if (error) {
     return (
-      <div className={`flex items-center justify-center bg-muted rounded-lg ${className}`}>
+      <div className={`flex items-center justify-center bg-muted/50 ${className}`}>
         <div className="text-center p-8">
-          <p className="text-muted-foreground">{error}</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to your environment
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+            <MapIcon className="h-7 w-7 text-muted-foreground/40" />
+          </div>
+          <p className="text-sm font-medium text-muted-foreground">{error}</p>
+          <p className="text-xs text-muted-foreground/70 mt-1.5">
+            Configura NEXT_PUBLIC_GOOGLE_MAPS_API_KEY en tu entorno
           </p>
         </div>
       </div>
@@ -155,8 +146,11 @@ export function VehicleMap({
 
   if (!isLoaded) {
     return (
-      <div className={`flex items-center justify-center bg-muted rounded-lg ${className}`}>
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className={`flex items-center justify-center bg-muted/50 ${className}`}>
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          <span className="text-xs text-muted-foreground">Cargando mapa...</span>
+        </div>
       </div>
     );
   }
@@ -164,7 +158,7 @@ export function VehicleMap({
   return (
     <div
       ref={mapRef}
-      className={`rounded-lg overflow-hidden ${className}`}
+      className={`overflow-hidden ${className}`}
       style={{ minHeight: "400px" }}
     />
   );
@@ -190,37 +184,28 @@ export function LocationPicker({
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
 
-  // Load Google Maps script
+  // Load Google Maps via singleton loader
   useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    if (!apiKey || window.google?.maps) {
-      if (window.google?.maps) setIsLoaded(true);
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => setIsLoaded(true);
-    document.head.appendChild(script);
+    let cancelled = false;
+    loadGoogleMaps()
+      .then(() => { if (!cancelled) setIsLoaded(true); })
+      .catch(() => { /* silently fail for location picker */ });
+    return () => { cancelled = true; };
   }, []);
 
   // Initialize map and autocomplete
   useEffect(() => {
     if (!isLoaded || !mapRef.current || !inputRef.current) return;
 
-    // Initialize map
-    mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+    mapInstanceRef.current = new google.maps.Map(mapRef.current, {
       center: value || DEFAULT_CENTER,
       zoom: 14,
       disableDefaultUI: true,
       zoomControl: true,
     });
 
-    // Initialize marker
     if (value) {
-      markerRef.current = new window.google.maps.Marker({
+      markerRef.current = new google.maps.Marker({
         position: value,
         map: mapInstanceRef.current,
         draggable: true,
@@ -234,10 +219,9 @@ export function LocationPicker({
       });
     }
 
-    // Initialize autocomplete
-    const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+    const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
       types: ["geocode"],
-      componentRestrictions: { country: "uy" }, // Uruguay
+      componentRestrictions: { country: "uy" },
     });
 
     autocomplete.addListener("place_changed", () => {
@@ -250,12 +234,11 @@ export function LocationPicker({
         onChange(location);
         onAddressChange?.(place.formatted_address || "");
 
-        // Update map and marker
         mapInstanceRef.current?.setCenter(location);
         if (markerRef.current) {
           markerRef.current.setPosition(location);
         } else {
-          markerRef.current = new window.google.maps.Marker({
+          markerRef.current = new google.maps.Marker({
             position: location,
             map: mapInstanceRef.current,
             draggable: true,
@@ -270,7 +253,6 @@ export function LocationPicker({
       }
     });
 
-    // Click on map to place marker
     mapInstanceRef.current.addListener("click", (e: google.maps.MapMouseEvent) => {
       if (e.latLng) {
         const location = { lat: e.latLng.lat(), lng: e.latLng.lng() };
@@ -279,7 +261,7 @@ export function LocationPicker({
         if (markerRef.current) {
           markerRef.current.setPosition(location);
         } else {
-          markerRef.current = new window.google.maps.Marker({
+          markerRef.current = new google.maps.Marker({
             position: location,
             map: mapInstanceRef.current,
             draggable: true,

@@ -1,146 +1,74 @@
 import Link from "next/link";
-import { Car, Facebook, Instagram, Twitter } from "lucide-react";
+import { Logo } from "@/components/layout/logo";
 import { APP_NAME } from "@/constants";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="border-t bg-muted/30">
-      <div className="container py-12">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-4">
+    <footer className="border-t border-border/40 bg-muted/20">
+      <div className="container py-14">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-12 md:gap-12">
           {/* Brand */}
-          <div className="space-y-4">
-            <Link href="/" className="flex items-center gap-2">
-              <Car className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">{APP_NAME}</span>
-            </Link>
-            <p className="text-sm text-muted-foreground">
-              La mejor plataforma para alquilar vehículos en Uruguay.
-              Encuentra el auto perfecto para tu próximo viaje.
+          <div className="col-span-2 md:col-span-4 space-y-4">
+            <Logo size="sm" />
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+              La mejor plataforma para alquilar vehículos entre particulares en Uruguay.
             </p>
-            <div className="flex gap-4">
-              <Link
-                href="https://facebook.com"
-                className="text-muted-foreground hover:text-foreground"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Facebook className="h-5 w-5" />
-              </Link>
-              <Link
-                href="https://instagram.com"
-                className="text-muted-foreground hover:text-foreground"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Instagram className="h-5 w-5" />
-              </Link>
-              <Link
-                href="https://twitter.com"
-                className="text-muted-foreground hover:text-foreground"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Twitter className="h-5 w-5" />
-              </Link>
-            </div>
           </div>
 
-          {/* Quick Links */}
-          <div className="space-y-4">
-            <h3 className="font-semibold">Explorar</h3>
-            <nav className="flex flex-col gap-2">
-              <Link
-                href="/search"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Buscar vehículos
-              </Link>
-              <Link
-                href="/how-it-works"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Cómo funciona
-              </Link>
-              <Link
-                href="/host"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Conviértete en anfitrión
-              </Link>
-              <Link
-                href="/faq"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Preguntas frecuentes
-              </Link>
+          {/* Explore */}
+          <div className="md:col-span-2">
+            <h3 className="font-display font-semibold text-sm mb-4">Explorar</h3>
+            <nav className="flex flex-col gap-2.5">
+              <FooterLink href="/search">Buscar vehículos</FooterLink>
+              <FooterLink href="/host">Ser anfitrión</FooterLink>
+              <FooterLink href="/faq">Preguntas frecuentes</FooterLink>
             </nav>
           </div>
 
           {/* Support */}
-          <div className="space-y-4">
-            <h3 className="font-semibold">Soporte</h3>
-            <nav className="flex flex-col gap-2">
-              <Link
-                href="/contact"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Contacto
-              </Link>
-              <Link
-                href="/help"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Centro de ayuda
-              </Link>
-              <Link
-                href="/insurance"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Seguros
-              </Link>
-              <Link
-                href="/safety"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Seguridad
-              </Link>
+          <div className="md:col-span-2">
+            <h3 className="font-display font-semibold text-sm mb-4">Soporte</h3>
+            <nav className="flex flex-col gap-2.5">
+              <FooterLink href="/contact">Contacto</FooterLink>
+              <FooterLink href="/help">Centro de ayuda</FooterLink>
+              <FooterLink href="/insurance">Seguros</FooterLink>
+              <FooterLink href="/safety">Seguridad</FooterLink>
             </nav>
           </div>
 
           {/* Legal */}
-          <div className="space-y-4">
-            <h3 className="font-semibold">Legal</h3>
-            <nav className="flex flex-col gap-2">
-              <Link
-                href="/terms"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Términos de servicio
-              </Link>
-              <Link
-                href="/privacy"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Política de privacidad
-              </Link>
-              <Link
-                href="/cookies"
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                Política de cookies
-              </Link>
+          <div className="md:col-span-2">
+            <h3 className="font-display font-semibold text-sm mb-4">Legal</h3>
+            <nav className="flex flex-col gap-2.5">
+              <FooterLink href="/terms">Términos de servicio</FooterLink>
+              <FooterLink href="/privacy">Privacidad</FooterLink>
+              <FooterLink href="/cookies">Cookies</FooterLink>
             </nav>
           </div>
         </div>
 
-        <div className="mt-12 border-t pt-8">
-          <p className="text-center text-sm text-muted-foreground">
+        <div className="mt-12 pt-6 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-muted-foreground">
             &copy; {currentYear} {APP_NAME}. Todos los derechos reservados.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Hecho con cuidado en Uruguay
           </p>
         </div>
       </div>
     </footer>
+  );
+}
+
+function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+    >
+      {children}
+    </Link>
   );
 }

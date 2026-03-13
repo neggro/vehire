@@ -159,7 +159,8 @@ export async function GET(request: NextRequest) {
         orderBy = { basePriceDay: "desc" };
         break;
       case "rating":
-        orderBy = { reviewsReceived: { _count: "desc" } };
+        // Rating is computed from host reviews after query — fetch by newest, sort in JS below
+        orderBy = { createdAt: "desc" };
         break;
     }
 
@@ -221,6 +222,11 @@ export async function GET(request: NextRequest) {
         },
       };
     });
+
+    // Sort by rating in JS when requested (can't sort by computed field in Prisma)
+    if (sortBy === "rating") {
+      formattedVehicles.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+    }
 
     return NextResponse.json({
       vehicles: formattedVehicles,

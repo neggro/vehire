@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import {
   Users,
   Fuel,
   Gauge,
+  Car,
   SlidersHorizontal,
   Grid3X3,
   List,
@@ -73,83 +74,280 @@ interface SearchResponse {
 
 type ViewMode = "grid" | "list" | "map";
 
-function VehicleCard({ vehicle, compact = false }: { vehicle: Vehicle; compact?: boolean }) {
+// -- Vehicle image placeholder --
+function VehicleImagePlaceholder({ className = "" }: { className?: string }) {
   return (
-    <Card className="group overflow-hidden hover:shadow-lg transition-shadow">
+    <div className={`flex items-center justify-center bg-gradient-to-br from-primary/5 to-muted ${className}`}>
+      <Car className="h-10 w-10 text-muted-foreground/30" />
+    </div>
+  );
+}
+
+// -- Rating pill --
+function RatingPill({ rating }: { rating: number }) {
+  return (
+    <div className="flex items-center gap-1 bg-[hsl(var(--gold))]/10 px-2 py-0.5 rounded-full">
+      <Star className="h-3.5 w-3.5 fill-[hsl(var(--gold))] text-[hsl(var(--gold))]" />
+      <span className="text-sm font-semibold">{rating.toFixed(1)}</span>
+    </div>
+  );
+}
+
+// -- Favorite button --
+function FavoriteButton({ className = "" }: { className?: string }) {
+  return (
+    <button
+      className={`rounded-full bg-white/90 dark:bg-background/90 p-2 hover:bg-white dark:hover:bg-background shadow-sm hover:shadow-md hover:scale-110 transition-all duration-200 ${className}`}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
+      <Heart className="h-4 w-4" />
+    </button>
+  );
+}
+
+// -- Specs row --
+function VehicleSpecs({ vehicle, size = "sm" }: { vehicle: Vehicle; size?: "sm" | "md" }) {
+  const iconSize = size === "md" ? "h-4 w-4" : "h-3.5 w-3.5";
+  return (
+    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+      <span className="flex items-center gap-1">
+        <Users className={iconSize} />
+        {vehicle.seats}
+      </span>
+      <span className="flex items-center gap-1">
+        <Gauge className={iconSize} />
+        {TRANSMISSION_LABELS[vehicle.transmission as keyof typeof TRANSMISSION_LABELS] || vehicle.transmission}
+      </span>
+      <span className="flex items-center gap-1">
+        <Fuel className={iconSize} />
+        {FUEL_TYPE_LABELS[vehicle.fuelType as keyof typeof FUEL_TYPE_LABELS] || vehicle.fuelType}
+      </span>
+    </div>
+  );
+}
+
+// =============================================
+// GRID CARD — vertical, used in grid view
+// =============================================
+function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
+  return (
+    <Card className="group overflow-hidden border-border/40 card-hover">
       <Link href={`/vehicle/${vehicle.id}`}>
-        <div className="relative aspect-[4/3] bg-muted">
+        <div className="relative aspect-[4/3] bg-muted overflow-hidden">
           {vehicle.images?.[0]?.url ? (
             <img
               src={vehicle.images[0].url}
               alt={`${vehicle.make} ${vehicle.model}`}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover img-zoom"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-4xl">🚗</span>
-            </div>
+            <VehicleImagePlaceholder className="absolute inset-0" />
           )}
-          <button
-            className="absolute top-3 right-3 rounded-full bg-white/80 p-2 hover:bg-white transition-colors"
-            onClick={(e) => {
-              e.preventDefault();
-              // TODO: Implement favorites
-            }}
-          >
-            <Heart className="h-4 w-4" />
-          </button>
+          <FavoriteButton className="absolute top-3 right-3" />
           <Badge className="absolute bottom-3 left-3" variant="secondary">
             {vehicle.city}
           </Badge>
         </div>
       </Link>
-      <CardContent className={compact ? "p-3" : "p-4"}>
+      <CardContent className="p-5">
         <Link href={`/vehicle/${vehicle.id}`}>
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="font-semibold">
+              <h3 className="font-semibold font-display">
                 {vehicle.make} {vehicle.model}
               </h3>
               <p className="text-sm text-muted-foreground">{vehicle.year}</p>
             </div>
-            {vehicle.rating !== null && (
-              <div className="flex items-center gap-1">
-                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                <span className="text-sm font-medium">{vehicle.rating.toFixed(1)}</span>
-              </div>
-            )}
+            {vehicle.rating !== null && <RatingPill rating={vehicle.rating} />}
           </div>
 
-          {!compact && (
-            <div className="mt-3 flex flex-wrap gap-2 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Users className="h-4 w-4" />
-                {vehicle.seats}
-              </span>
-              <span className="flex items-center gap-1">
-                <Gauge className="h-4 w-4" />
-                {TRANSMISSION_LABELS[vehicle.transmission as keyof typeof TRANSMISSION_LABELS] || vehicle.transmission}
-              </span>
-              <span className="flex items-center gap-1">
-                <Fuel className="h-4 w-4" />
-                {FUEL_TYPE_LABELS[vehicle.fuelType as keyof typeof FUEL_TYPE_LABELS] || vehicle.fuelType}
-              </span>
-            </div>
-          )}
+          <div className="mt-3">
+            <VehicleSpecs vehicle={vehicle} />
+          </div>
 
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex items-center justify-between pt-3 border-t border-border/40">
             <div>
-              <span className="text-lg font-bold">
+              <span className="text-lg font-bold font-display">
                 {formatPrice(vehicle.basePriceDay)}
               </span>
               <span className="text-sm text-muted-foreground">/día</span>
             </div>
-            <Button size="sm">
+            <Button size="sm" className="rounded-lg shadow-sm">
               Ver más
             </Button>
           </div>
         </Link>
       </CardContent>
+    </Card>
+  );
+}
+
+// =============================================
+// LIST ITEM — horizontal card for list view
+// =============================================
+function VehicleListItem({
+  vehicle,
+  isSelected,
+  onHover,
+}: {
+  vehicle: Vehicle;
+  isSelected?: boolean;
+  onHover?: (id: string | null) => void;
+}) {
+  return (
+    <Card
+      className={`group overflow-hidden border-border/40 transition-all duration-200 hover:shadow-lg ${
+        isSelected ? "ring-2 ring-primary shadow-lg" : ""
+      }`}
+      onMouseEnter={() => onHover?.(vehicle.id)}
+      onMouseLeave={() => onHover?.(null)}
+    >
+      <Link href={`/vehicle/${vehicle.id}`}>
+        <div className="flex flex-col sm:flex-row">
+          {/* Image — left side */}
+          <div className="relative w-full sm:w-72 md:w-80 shrink-0 aspect-[4/3] sm:aspect-auto sm:h-auto bg-muted overflow-hidden">
+            {vehicle.images?.[0]?.url ? (
+              <img
+                src={vehicle.images[0].url}
+                alt={`${vehicle.make} ${vehicle.model}`}
+                className="w-full h-full object-cover img-zoom sm:absolute sm:inset-0"
+              />
+            ) : (
+              <VehicleImagePlaceholder className="w-full h-full sm:absolute sm:inset-0" />
+            )}
+            <FavoriteButton className="absolute top-3 right-3" />
+            <Badge className="absolute bottom-3 left-3 sm:top-3 sm:bottom-auto" variant="secondary">
+              <MapPin className="h-3 w-3 mr-1" />
+              {vehicle.city}
+            </Badge>
+          </div>
+
+          {/* Content — right side */}
+          <div className="flex-1 p-5 sm:p-6 flex flex-col justify-between min-h-[160px]">
+            <div>
+              {/* Header row */}
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold font-display">
+                    {vehicle.make} {vehicle.model}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">{vehicle.year}</p>
+                </div>
+                {vehicle.rating !== null && <RatingPill rating={vehicle.rating} />}
+              </div>
+
+              {/* Specs */}
+              <div className="mt-3">
+                <VehicleSpecs vehicle={vehicle} size="md" />
+              </div>
+
+              {/* Host info */}
+              <p className="mt-2 text-sm text-muted-foreground">
+                Anfitrión: <span className="text-foreground font-medium">{vehicle.host.fullName}</span>
+                {vehicle.reviewCount > 0 && (
+                  <span className="ml-2">· {vehicle.reviewCount} reseña{vehicle.reviewCount !== 1 ? "s" : ""}</span>
+                )}
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-4 flex items-center justify-between pt-3 border-t border-border/40">
+              <div>
+                <span className="text-xl font-bold font-display">
+                  {formatPrice(vehicle.basePriceDay)}
+                </span>
+                <span className="text-sm text-muted-foreground">/día</span>
+              </div>
+              <Button className="rounded-lg shadow-sm px-6">
+                Ver detalle
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Link>
+    </Card>
+  );
+}
+
+// =============================================
+// MAP CARD — compact card for map sidebar
+// =============================================
+function VehicleMapCard({
+  vehicle,
+  isSelected,
+  onHover,
+}: {
+  vehicle: Vehicle;
+  isSelected?: boolean;
+  onHover?: (id: string | null) => void;
+}) {
+  return (
+    <Card
+      className={`group overflow-hidden border-border/40 transition-all duration-200 hover:shadow-md cursor-pointer ${
+        isSelected
+          ? "ring-2 ring-primary shadow-md bg-primary/[0.02]"
+          : ""
+      }`}
+      onMouseEnter={() => onHover?.(vehicle.id)}
+      onMouseLeave={() => onHover?.(null)}
+    >
+      <Link href={`/vehicle/${vehicle.id}`}>
+        <div className="flex gap-3 p-3">
+          {/* Thumbnail */}
+          <div className="relative w-28 h-20 shrink-0 rounded-lg overflow-hidden bg-muted">
+            {vehicle.images?.[0]?.url ? (
+              <img
+                src={vehicle.images[0].url}
+                alt={`${vehicle.make} ${vehicle.model}`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <VehicleImagePlaceholder className="w-full h-full" />
+            )}
+          </div>
+
+          {/* Info */}
+          <div className="flex-1 min-w-0 flex flex-col justify-between">
+            <div>
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="font-semibold font-display text-sm truncate">
+                  {vehicle.make} {vehicle.model}
+                </h4>
+                {vehicle.rating !== null && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <Star className="h-3 w-3 fill-[hsl(var(--gold))] text-[hsl(var(--gold))]" />
+                    <span className="text-xs font-semibold">{vehicle.rating.toFixed(1)}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {vehicle.year} · {vehicle.city}
+              </p>
+            </div>
+            <div className="flex items-center justify-between mt-1.5">
+              <div>
+                <span className="text-sm font-bold font-display">
+                  {formatPrice(vehicle.basePriceDay)}
+                </span>
+                <span className="text-xs text-muted-foreground">/día</span>
+              </div>
+              <div className="flex gap-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-0.5">
+                  <Users className="h-3 w-3" />
+                  {vehicle.seats}
+                </span>
+                <span className="flex items-center gap-0.5">
+                  <Gauge className="h-3 w-3" />
+                  {TRANSMISSION_LABELS[vehicle.transmission as keyof typeof TRANSMISSION_LABELS]?.substring(0, 4) || vehicle.transmission.substring(0, 4)}.
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
     </Card>
   );
 }
@@ -277,10 +475,10 @@ function SearchFilters({
       </div>
 
       <div className="pt-4 space-y-3">
-        <Button className="w-full h-12 text-base font-semibold shadow-md" onClick={onApply}>
+        <Button className="w-full h-12 text-base font-semibold shadow-md rounded-xl" onClick={onApply}>
           Aplicar filtros
         </Button>
-        <Button variant="outline" className="w-full h-12 text-base" onClick={onReset}>
+        <Button variant="outline" className="w-full h-12 text-base rounded-xl" onClick={onReset}>
           Limpiar filtros
         </Button>
       </div>
@@ -334,9 +532,30 @@ export default function SearchWithMap() {
     };
   });
 
+  // Track last-searched values to prevent redundant searches
+  const lastSearchedRef = useRef<string>("");
+
+  const currentSearchKey = useMemo(() => {
+    return JSON.stringify({
+      city: filters.city,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      transmission: filters.transmission,
+      fuelType: filters.fuelType,
+      minSeats: filters.minSeats,
+      startDate: dateRange.startDate?.toISOString() || "",
+      endDate: dateRange.endDate?.toISOString() || "",
+      startTime: dateRange.startTime,
+      endTime: dateRange.endTime,
+    });
+  }, [filters, dateRange]);
+
+  const hasChanges = currentSearchKey !== lastSearchedRef.current;
+
   // Search function
-  const searchVehicles = useCallback(async (page = 1) => {
+  const searchVehicles = useCallback(async (page = 1, snapshot?: string) => {
     setIsLoading(true);
+    if (snapshot) lastSearchedRef.current = snapshot;
     try {
       const params = new URLSearchParams();
 
@@ -384,10 +603,24 @@ export default function SearchWithMap() {
     }
   }, [filters, dateRange, sortBy]);
 
-  // Initial search and when filters/sort change
+  // Initial search on mount
+  const initialSearchDone = useRef(false);
   useEffect(() => {
-    searchVehicles(1);
-  }, [searchVehicles]);
+    if (!initialSearchDone.current) {
+      initialSearchDone.current = true;
+      lastSearchedRef.current = currentSearchKey;
+      searchVehicles(1, currentSearchKey);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-search when sort changes
+  useEffect(() => {
+    if (initialSearchDone.current) {
+      searchVehicles(1, currentSearchKey);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortBy]);
 
   // Update URL with filters
   const updateUrl = useCallback(() => {
@@ -418,8 +651,9 @@ export default function SearchWithMap() {
   };
 
   const handleApplyFilters = () => {
+    if (!hasChanges && !isLoading) return;
     updateUrl();
-    searchVehicles(1);
+    searchVehicles(1, currentSearchKey);
     setShowMobileFilters(false);
   };
 
@@ -449,7 +683,7 @@ export default function SearchWithMap() {
 
   const handleMarkerClick = (vehicleId: string) => {
     setSelectedVehicleId(vehicleId);
-    setViewMode("list");
+    // Scroll to the card in the sidebar (works for both map and list views)
     setTimeout(() => {
       const element = document.getElementById(`vehicle-${vehicleId}`);
       if (element) {
@@ -460,11 +694,11 @@ export default function SearchWithMap() {
 
   return (
     <div className="min-h-screen bg-muted/30">
-      {/* Search Header - Airbnb Style */}
-      <div className="sticky top-16 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
+      {/* Search Header */}
+      <div className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="container py-4">
           {/* Desktop Layout */}
-          <div className="hidden md:flex items-center w-full max-w-5xl mx-auto bg-background border rounded-full shadow-md hover:shadow-lg transition-all p-1.5 gap-1">
+          <div className="hidden md:flex items-center w-full max-w-5xl mx-auto bg-background border border-border/50 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 p-1.5 gap-1">
             {/* Location */}
             <div className="flex-[1.5] min-w-[280px]">
               <PlacesAutocomplete
@@ -493,11 +727,14 @@ export default function SearchWithMap() {
             {/* Search Button */}
             <Button
               onClick={handleApplyFilters}
-              disabled={isLoading}
-              className="rounded-full h-12 px-6 ml-1 shadow-md hover:shadow-lg transition-all"
+              disabled={isLoading || !hasChanges}
+              className="rounded-full h-12 min-w-[130px] px-6 ml-1 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
             >
               {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  <span className="font-semibold">Buscando</span>
+                </>
               ) : (
                 <>
                   <Search className="h-5 w-5 mr-2" />
@@ -539,8 +776,8 @@ export default function SearchWithMap() {
               />
               <Button
                 onClick={handleApplyFilters}
-                disabled={isLoading}
-                className="shrink-0 h-11 px-6 rounded-xl"
+                disabled={isLoading || !hasChanges}
+                className="shrink-0 h-11 min-w-[52px] px-4 rounded-xl"
               >
                 {isLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -558,7 +795,7 @@ export default function SearchWithMap() {
         <div className="grid gap-8 lg:grid-cols-[280px_1fr]">
           {/* Filters Sidebar - Desktop */}
           <aside className="hidden lg:block">
-            <Card className="sticky top-36">
+            <Card className="sticky top-20">
               <CardContent className="p-6">
                 <SearchFilters
                   filters={filters}
@@ -639,11 +876,15 @@ export default function SearchWithMap() {
 
             {/* Empty State */}
             {!isLoading && vehicles.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">
-                  No se encontraron vehículos disponibles con los filtros seleccionados
+              <div className="text-center py-20">
+                <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-muted">
+                  <Car className="h-10 w-10 text-muted-foreground/40" />
+                </div>
+                <h3 className="font-display font-semibold text-lg mb-2">No se encontraron vehículos</h3>
+                <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+                  Intenta ajustar los filtros o buscar en otra ubicación
                 </p>
-                <Button variant="outline" onClick={handleResetFilters}>
+                <Button variant="outline" onClick={handleResetFilters} className="rounded-xl">
                   Limpiar filtros
                 </Button>
               </div>
@@ -662,16 +903,11 @@ export default function SearchWithMap() {
             {viewMode === "list" && vehicles.length > 0 && (
               <div className="space-y-4">
                 {vehicles.map((vehicle) => (
-                  <div
-                    key={vehicle.id}
-                    id={`vehicle-${vehicle.id}`}
-                    className={`transition-all duration-200 ${
-                      selectedVehicleId === vehicle.id
-                        ? "ring-2 ring-primary rounded-lg"
-                        : ""
-                    }`}
-                  >
-                    <VehicleCard vehicle={vehicle} />
+                  <div key={vehicle.id} id={`vehicle-${vehicle.id}`}>
+                    <VehicleListItem
+                      vehicle={vehicle}
+                      isSelected={selectedVehicleId === vehicle.id}
+                    />
                   </div>
                 ))}
               </div>
@@ -679,8 +915,9 @@ export default function SearchWithMap() {
 
             {/* Map View */}
             {viewMode === "map" && vehicles.length > 0 && (
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="h-[600px]">
+              <div className="grid gap-0 lg:grid-cols-[1fr_380px] rounded-xl overflow-hidden border border-border/40 shadow-sm bg-background">
+                {/* Map panel */}
+                <div className="h-[500px] lg:h-[calc(100vh-220px)] min-h-[400px] relative">
                   <VehicleMap
                     vehicles={vehicles
                       .filter((v) => v.city)
@@ -694,23 +931,35 @@ export default function SearchWithMap() {
                     selectedVehicleId={selectedVehicleId}
                     className="h-full"
                   />
+                  {/* Vehicle count overlay */}
+                  <div className="absolute top-3 left-3 bg-background/90 backdrop-blur-md rounded-lg px-3 py-1.5 shadow-md border border-border/40">
+                    <span className="text-xs font-semibold font-display">
+                      {vehicles.length} vehículo{vehicles.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
                 </div>
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                  {vehicles.map((vehicle) => (
-                    <div
-                      key={vehicle.id}
-                      id={`vehicle-${vehicle.id}`}
-                      className={`transition-all duration-200 ${
-                        selectedVehicleId === vehicle.id
-                          ? "ring-2 ring-primary rounded-lg"
-                          : ""
-                      }`}
-                      onMouseEnter={() => setSelectedVehicleId(vehicle.id)}
-                      onMouseLeave={() => setSelectedVehicleId(null)}
-                    >
-                      <VehicleCard vehicle={vehicle} />
-                    </div>
-                  ))}
+
+                {/* Card sidebar */}
+                <div className="border-t lg:border-t-0 lg:border-l border-border/40 flex flex-col">
+                  {/* Sidebar header */}
+                  <div className="px-4 py-3 border-b border-border/40 bg-muted/30 shrink-0">
+                    <h3 className="font-display font-semibold text-sm">Resultados</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Pasa el mouse sobre una tarjeta para ver en el mapa
+                    </p>
+                  </div>
+                  {/* Scrollable cards */}
+                  <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[300px] lg:max-h-none">
+                    {vehicles.map((vehicle) => (
+                      <div key={vehicle.id} id={`vehicle-${vehicle.id}`}>
+                        <VehicleMapCard
+                          vehicle={vehicle}
+                          isSelected={selectedVehicleId === vehicle.id}
+                          onHover={setSelectedVehicleId}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
