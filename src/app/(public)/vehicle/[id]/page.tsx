@@ -22,6 +22,7 @@ import { BookingCard } from "./booking-card";
 import { ImageGallery } from "./image-gallery";
 import { LocationMapClient } from "./location-map";
 import { PaginatedReviews, type ReviewData } from "@/components/reviews/paginated-reviews";
+import { createClient as getServerClient } from "@/lib/supabase/server";
 
 // Types
 interface VehiclePageProps {
@@ -444,6 +445,17 @@ export default async function VehiclePage({ params }: VehiclePageProps) {
     notFound();
   }
 
+  // Check if user has favorited this vehicle
+  const supabase = await getServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  let isFavorite = false;
+  if (user) {
+    const fav = await prisma.favorite.findUnique({
+      where: { userId_vehicleId: { userId: user.id, vehicleId: id } },
+    });
+    isFavorite = !!fav;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Breadcrumb */}
@@ -463,7 +475,7 @@ export default async function VehiclePage({ params }: VehiclePageProps) {
         <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
           {/* Main content */}
           <div className="space-y-8">
-            <ImageGallery images={vehicle.images} vehicleName={`${vehicle.make} ${vehicle.model}`} />
+            <ImageGallery images={vehicle.images} vehicleName={`${vehicle.make} ${vehicle.model}`} vehicleId={id} isFavorite={isFavorite} isLoggedIn={!!user} />
             <VehicleInfo vehicle={vehicle} />
             <LocationMap vehicle={vehicle} />
             <VehicleReviews reviews={vehicle.reviews} rating={vehicle.rating} />

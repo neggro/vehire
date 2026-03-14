@@ -11,7 +11,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Logo } from "@/components/layout/logo";
-import { Menu, Plus, User, MessageSquare, Car, LayoutDashboard, LogOut } from "lucide-react";
+import { Menu, Plus, User, Heart, MessageSquare, Car, LayoutDashboard, LogOut } from "lucide-react";
 import { createClient as getServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { MobileNav } from "./mobile-nav";
@@ -107,6 +107,12 @@ export async function Header() {
                     <Link href="/dashboard">
                       <LayoutDashboard className="mr-2.5 h-4 w-4 text-muted-foreground" />
                       <span>Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="py-2.5 px-4 cursor-pointer">
+                    <Link href="/dashboard/favorites">
+                      <Heart className="mr-2.5 h-4 w-4 text-muted-foreground" />
+                      <span>Favoritos</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="py-2.5 px-4 cursor-pointer">

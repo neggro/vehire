@@ -1,23 +1,26 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient as getServerClient } from "@/lib/supabase/server";
-import { prisma } from "@/lib/prisma";
+import { getAdminUser, hasPermission } from "@/lib/admin";
+import { ADMIN_PERMISSIONS } from "@/constants";
 import {
   ShieldCheck,
   Users,
   Car,
-  DollarSign,
   Settings,
   LayoutDashboard,
+  CalendarCheck,
+  CreditCard,
 } from "lucide-react";
+import { AdminMobileNav } from "./admin-mobile-nav";
 
-const adminNavItems = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/kyc", label: "KYC", icon: ShieldCheck },
-  { href: "/admin/users", label: "Usuarios", icon: Users },
-  { href: "/admin/vehicles", label: "Vehículos", icon: Car },
-  { href: "/admin/payments", label: "Pagos", icon: DollarSign },
-  { href: "/admin/settings", label: "Configuración", icon: Settings },
+const allNavItems = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard, iconKey: "dashboard", permission: null },
+  { href: "/admin/users", label: "Usuarios", icon: Users, iconKey: "users", permission: ADMIN_PERMISSIONS.USERS },
+  { href: "/admin/vehicles", label: "Vehiculos", icon: Car, iconKey: "vehicles", permission: ADMIN_PERMISSIONS.VEHICLES },
+  { href: "/admin/bookings", label: "Reservas", icon: CalendarCheck, iconKey: "bookings", permission: ADMIN_PERMISSIONS.BOOKINGS },
+  { href: "/admin/payments", label: "Pagos", icon: CreditCard, iconKey: "payments", permission: ADMIN_PERMISSIONS.PAYMENTS },
+  { href: "/admin/kyc", label: "KYC", icon: ShieldCheck, iconKey: "kyc", permission: ADMIN_PERMISSIONS.KYC },
+  { href: "/admin/settings", label: "Configuracion", icon: Settings, iconKey: "settings", permission: ADMIN_PERMISSIONS.SETTINGS },
 ];
 
 export default async function AdminLayout({
@@ -25,39 +28,29 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await getServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const adminUser = await getAdminUser();
 
-  if (!user) {
-    redirect("/login?redirect=/admin");
-  }
-
-  // Get user profile with Prisma
-  const profile = await prisma.user.findUnique({
-    where: { id: user.id },
-    select: { roles: true },
-  });
-
-  // Check if user is admin
-  const isAdmin = profile?.roles?.includes("ADMIN");
-
-  if (!isAdmin) {
+  if (!adminUser) {
     redirect("/dashboard");
   }
 
+  const navItems = allNavItems.filter(
+    (item) =>
+      item.permission === null ||
+      hasPermission(adminUser.adminPermissions, item.permission)
+  );
+
   return (
     <div className="flex flex-1">
-      {/* Sidebar */}
+      {/* Desktop Sidebar */}
       <aside className="hidden w-64 border-r bg-muted/30 lg:block">
         <div className="sticky top-16 h-[calc(100vh-4rem)] overflow-auto p-4">
           <div className="mb-4 flex items-center gap-2 text-primary">
             <ShieldCheck className="h-5 w-5" />
             <span className="font-semibold">Panel Admin</span>
           </div>
-          <nav className="space-y-2">
-            {adminNavItems.map((item) => (
+          <nav className="space-y-1">
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -70,6 +63,12 @@ export default async function AdminLayout({
           </nav>
         </div>
       </aside>
+
+      {/* Mobile nav */}
+      <div className="lg:hidden fixed bottom-4 right-4 z-50">
+        <AdminMobileNav navItems={navItems.map((item) => ({ href: item.href, label: item.label, iconKey: item.iconKey }))} />
+      </div>
+
       <main className="flex-1">{children}</main>
     </div>
   );

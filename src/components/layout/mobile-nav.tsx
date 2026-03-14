@@ -8,6 +8,7 @@ import {
   X,
   Search,
   Car,
+  Heart,
   LayoutDashboard,
   MessageSquare,
   Plus,
@@ -74,6 +75,12 @@ export function MobileNav({ isLoggedIn, isHost }: MobileNavProps) {
                         href="/dashboard"
                         icon={LayoutDashboard}
                         label="Dashboard"
+                        onClick={() => setOpen(false)}
+                      />
+                      <MobileNavLink
+                        href="/dashboard/favorites"
+                        icon={Heart}
+                        label="Favoritos"
                         onClick={() => setOpen(false)}
                       />
                       <MobileNavLink

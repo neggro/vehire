@@ -1,179 +1,247 @@
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { getAdminUser, hasPermission } from "@/lib/admin";
+import { prisma } from "@/lib/prisma";
+import {
+  ADMIN_PERMISSIONS,
+  BOOKING_STATUS_LABELS,
+} from "@/constants";
+import { formatPrice, formatDate } from "@/lib/utils";
 import {
   Users,
   Car,
   DollarSign,
   ShieldCheck,
-  TrendingUp,
   ArrowRight,
+  CalendarCheck,
+  CreditCard,
 } from "lucide-react";
-
-// Mock stats
-const stats = {
-  totalUsers: 1234,
-  activeHosts: 89,
-  activeVehicles: 156,
-  pendingKYC: 12,
-  monthlyRevenue: 4500000,
-  monthlyBookings: 234,
-};
+import { redirect } from "next/navigation";
 
 export default async function AdminDashboardPage() {
+  const adminUser = await getAdminUser();
+  if (!adminUser) redirect("/dashboard");
+
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [
+    totalUsers,
+    activeVehicles,
+    pendingKYC,
+    activeBookings,
+    monthlyRevenue,
+    recentBookings,
+    pendingVehicles,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.vehicle.count({ where: { status: "ACTIVE" } }),
+    prisma.user.count({ where: { kycStatus: "PENDING" } }),
+    prisma.booking.count({ where: { status: { in: ["CONFIRMED", "ACTIVE"] } } }),
+    prisma.payment.aggregate({
+      where: {
+        status: { in: ["HELD", "RELEASED"] },
+        paidAt: { gte: startOfMonth },
+      },
+      _sum: { platformFee: true },
+    }),
+    prisma.booking.findMany({
+      take: 5,
+      orderBy: { createdAt: "desc" },
+      include: {
+        driver: { select: { fullName: true } },
+        vehicle: { select: { make: true, model: true } },
+      },
+    }),
+    prisma.vehicle.count({ where: { status: "PENDING_APPROVAL" } }),
+  ]);
+
+  const canPayments = hasPermission(adminUser.adminPermissions, ADMIN_PERMISSIONS.PAYMENTS);
+  const canUsers = hasPermission(adminUser.adminPermissions, ADMIN_PERMISSIONS.USERS);
+  const canVehicles = hasPermission(adminUser.adminPermissions, ADMIN_PERMISSIONS.VEHICLES);
+  const canBookings = hasPermission(adminUser.adminPermissions, ADMIN_PERMISSIONS.BOOKINGS);
+  const canKYC = hasPermission(adminUser.adminPermissions, ADMIN_PERMISSIONS.KYC);
+
+  const statusColor: Record<string, "default" | "success" | "warning" | "destructive" | "secondary"> = {
+    PENDING: "warning",
+    CONFIRMED: "default",
+    ACTIVE: "success",
+    COMPLETED: "secondary",
+    CANCELLED: "destructive",
+  };
+
   return (
     <div className="container py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Panel de Administración</h1>
+        <h1 className="text-3xl font-bold">Panel de Administracion</h1>
         <p className="text-muted-foreground">
           Resumen general de la plataforma
         </p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className={`grid gap-4 md:grid-cols-2 mb-8 ${canPayments ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Usuarios totales
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Usuarios totales</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            <p className="text-xs text-muted-foreground">
-              +{stats.activeHosts} anfitriones activos
-            </p>
+            <div className="text-2xl font-bold">{totalUsers}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Vehículos activos
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Vehiculos activos</CardTitle>
             <Car className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.activeVehicles}</div>
-            <p className="text-xs text-muted-foreground">
-              Disponibles para alquiler
-            </p>
+            <div className="text-2xl font-bold">{activeVehicles}</div>
+            {pendingVehicles > 0 && (
+              <p className="text-xs text-yellow-600">{pendingVehicles} pendientes de aprobacion</p>
+            )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              KYC Pendiente
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">KYC Pendiente</CardTitle>
             <ShieldCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-500">
-              {stats.pendingKYC}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Solicitudes de verificación
-            </p>
+            <div className="text-2xl font-bold text-yellow-500">{pendingKYC}</div>
+            <p className="text-xs text-muted-foreground">Solicitudes de verificacion</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Ingresos del mes
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Reservas activas</CardTitle>
+            <CalendarCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              ${(stats.monthlyRevenue / 100).toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              +{stats.monthlyBookings} reservas
-            </p>
+            <div className="text-2xl font-bold">{activeBookings}</div>
           </CardContent>
         </Card>
+        {canPayments && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Comisiones del mes</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatPrice(monthlyRevenue._sum.platformFee || 0)}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      {/* Quick Actions */}
       <div className="grid gap-6 md:grid-cols-2">
+        {/* Quick Actions */}
         <Card>
           <CardHeader>
-            <CardTitle>Acciones rápidas</CardTitle>
-            <CardDescription>
-              Tareas pendientes de atención
-            </CardDescription>
+            <CardTitle>Acciones rapidas</CardTitle>
+            <CardDescription>Tareas pendientes de atencion</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button variant="outline" className="w-full justify-between" asChild>
-              <Link href="/admin/kyc">
-                <span className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4" />
-                  Revisar KYC pendientes
-                </span>
-                <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">
-                  {stats.pendingKYC}
-                </span>
-              </Link>
-            </Button>
-            <Button variant="outline" className="w-full justify-between" asChild>
-              <Link href="/admin/vehicles">
-                <span className="flex items-center gap-2">
-                  <Car className="h-4 w-4" />
-                  Vehículos pendientes de aprobación
-                </span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button variant="outline" className="w-full justify-between" asChild>
-              <Link href="/admin/users">
-                <span className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Gestionar usuarios
-                </span>
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+            {canKYC && (
+              <Button variant="outline" className="w-full justify-between" asChild>
+                <Link href="/admin/kyc">
+                  <span className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4" />
+                    Revisar KYC pendientes
+                  </span>
+                  {pendingKYC > 0 && (
+                    <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">
+                      {pendingKYC}
+                    </span>
+                  )}
+                </Link>
+              </Button>
+            )}
+            {canVehicles && (
+              <Button variant="outline" className="w-full justify-between" asChild>
+                <Link href="/admin/vehicles">
+                  <span className="flex items-center gap-2">
+                    <Car className="h-4 w-4" />
+                    Vehiculos pendientes de aprobacion
+                  </span>
+                  {pendingVehicles > 0 && (
+                    <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">
+                      {pendingVehicles}
+                    </span>
+                  )}
+                </Link>
+              </Button>
+            )}
+            {canUsers && (
+              <Button variant="outline" className="w-full justify-between" asChild>
+                <Link href="/admin/users">
+                  <span className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Gestionar usuarios
+                  </span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            )}
+            {canBookings && (
+              <Button variant="outline" className="w-full justify-between" asChild>
+                <Link href="/admin/bookings">
+                  <span className="flex items-center gap-2">
+                    <CalendarCheck className="h-4 w-4" />
+                    Ver reservas
+                  </span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            )}
+            {canPayments && (
+              <Button variant="outline" className="w-full justify-between" asChild>
+                <Link href="/admin/payments">
+                  <span className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Ver pagos
+                  </span>
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            )}
           </CardContent>
         </Card>
 
+        {/* Recent Activity */}
         <Card>
           <CardHeader>
             <CardTitle>Actividad reciente</CardTitle>
-            <CardDescription>
-              Últimas acciones en la plataforma
-            </CardDescription>
+            <CardDescription>Ultimas reservas en la plataforma</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="h-2 w-2 rounded-full bg-green-500" />
-                <div className="flex-1">
-                  <p className="text-sm">Nueva reserva completada</p>
-                  <p className="text-xs text-muted-foreground">Hace 5 minutos</p>
-                </div>
+            {recentBookings.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No hay actividad reciente
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {recentBookings.map((booking) => (
+                  <div key={booking.id} className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {booking.vehicle.make} {booking.vehicle.model}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {booking.driver.fullName} - {formatDate(booking.createdAt)}
+                      </p>
+                    </div>
+                    <Badge variant={statusColor[booking.status] || "default"}>
+                      {BOOKING_STATUS_LABELS[booking.status] || booking.status}
+                    </Badge>
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-4">
-                <div className="h-2 w-2 rounded-full bg-blue-500" />
-                <div className="flex-1">
-                  <p className="text-sm">Nuevo usuario registrado</p>
-                  <p className="text-xs text-muted-foreground">Hace 15 minutos</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="h-2 w-2 rounded-full bg-yellow-500" />
-                <div className="flex-1">
-                  <p className="text-sm">Documento KYC enviado para revisión</p>
-                  <p className="text-xs text-muted-foreground">Hace 1 hora</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="h-2 w-2 rounded-full bg-purple-500" />
-                <div className="flex-1">
-                  <p className="text-sm">Nuevo vehículo publicado</p>
-                  <p className="text-xs text-muted-foreground">Hace 2 horas</p>
-                </div>
-              </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -11,13 +11,13 @@ import {
   Gauge,
   Car,
   Star,
-  Heart,
 } from "lucide-react";
 import {
   FUEL_TYPE_LABELS,
   TRANSMISSION_LABELS,
 } from "@/constants";
 import { formatPrice } from "@/lib/utils";
+import { FavoriteButton } from "./favorite-button";
 
 export interface VehicleCardData {
   id: string;
@@ -60,21 +60,6 @@ export function RatingPill({ rating }: { rating: number }) {
   );
 }
 
-// -- Favorite button --
-export function FavoriteButton({ className = "" }: { className?: string }) {
-  return (
-    <button
-      className={`rounded-full bg-white/90 dark:bg-background/90 p-2 hover:bg-white dark:hover:bg-background shadow-sm hover:shadow-md hover:scale-110 transition-all duration-200 ${className}`}
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}
-    >
-      <Heart className="h-4 w-4" />
-    </button>
-  );
-}
-
 // -- Specs row --
 export function VehicleSpecs({ vehicle, size = "sm" }: { vehicle: VehicleCardData; size?: "sm" | "md" }) {
   const iconSize = size === "md" ? "h-4 w-4" : "h-3.5 w-3.5";
@@ -99,7 +84,15 @@ export function VehicleSpecs({ vehicle, size = "sm" }: { vehicle: VehicleCardDat
 // =============================================
 // GRID CARD — vertical, used in grid view
 // =============================================
-export function VehicleCard({ vehicle }: { vehicle: VehicleCardData }) {
+export function VehicleCard({
+  vehicle,
+  isFavorite = false,
+  isLoggedIn = false,
+}: {
+  vehicle: VehicleCardData;
+  isFavorite?: boolean;
+  isLoggedIn?: boolean;
+}) {
   return (
     <Card className="group overflow-hidden border-border/40 card-hover">
       <Link href={`/vehicle/${vehicle.id}`}>
@@ -113,7 +106,12 @@ export function VehicleCard({ vehicle }: { vehicle: VehicleCardData }) {
           ) : (
             <VehicleImagePlaceholder className="absolute inset-0" />
           )}
-          <FavoriteButton className="absolute top-3 right-3" />
+          <FavoriteButton
+            vehicleId={vehicle.id}
+            isFavorite={isFavorite}
+            isLoggedIn={isLoggedIn}
+            className="absolute top-3 right-3"
+          />
           <Badge className="absolute bottom-3 left-3" variant="secondary">
             {vehicle.city}
           </Badge>
@@ -159,10 +157,14 @@ export function VehicleListItem({
   vehicle,
   isSelected,
   onHover,
+  isFavorite = false,
+  isLoggedIn = false,
 }: {
   vehicle: VehicleCardData;
   isSelected?: boolean;
   onHover?: (id: string | null) => void;
+  isFavorite?: boolean;
+  isLoggedIn?: boolean;
 }) {
   return (
     <Card
@@ -185,7 +187,12 @@ export function VehicleListItem({
             ) : (
               <VehicleImagePlaceholder className="w-full h-full sm:absolute sm:inset-0" />
             )}
-            <FavoriteButton className="absolute top-3 right-3" />
+            <FavoriteButton
+              vehicleId={vehicle.id}
+              isFavorite={isFavorite}
+              isLoggedIn={isLoggedIn}
+              className="absolute top-3 right-3"
+            />
             <Badge className="absolute bottom-3 left-3 sm:top-3 sm:bottom-auto" variant="secondary">
               <MapPin className="h-3 w-3 mr-1" />
               {vehicle.city}

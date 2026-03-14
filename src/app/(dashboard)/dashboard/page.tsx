@@ -12,6 +12,7 @@ import {
   TrendingUp,
   AlertCircle,
   ShoppingCart,
+  Heart,
 } from "lucide-react";
 import { createClient as getServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
@@ -347,6 +348,12 @@ export default async function DashboardPage() {
                 <Link href="/dashboard/bookings">
                   <Calendar className="mr-2 h-4 w-4" />
                   Mis reservas
+                </Link>
+              </Button>
+              <Button variant="outline" className="justify-start" asChild>
+                <Link href="/dashboard/favorites">
+                  <Heart className="mr-2 h-4 w-4" />
+                  Mis favoritos
                 </Link>
               </Button>
               <Button variant="outline" className="justify-start" asChild>

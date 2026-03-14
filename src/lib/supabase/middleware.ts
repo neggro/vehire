@@ -55,22 +55,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Admin routes - require ADMIN role
-  if (request.nextUrl.pathname.startsWith("/admin") && user) {
-    // Check if user has admin role
-    const { data: profile } = await supabase
-      .from("users")
-      .select("roles")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile?.roles?.includes("ADMIN")) {
-      // Redirect to dashboard if not admin
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
-      return NextResponse.redirect(url);
-    }
-  }
+  // Admin role check is NOT done here because middleware runs on Edge Runtime
+  // and cannot use Prisma. Instead, admin authorization is enforced by:
+  //   1. Admin layout (server component) — checks ADMIN role via Prisma, redirects if not admin
+  //   2. API routes — requireAdmin() helper checks role + granular permissions via Prisma
+  // The middleware only ensures the user is authenticated for /admin routes (handled above).
 
   // Security headers
   supabaseResponse.headers.set("X-Frame-Options", "DENY");

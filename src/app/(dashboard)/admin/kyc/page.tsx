@@ -1,247 +1,336 @@
-import Link from "next/link";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import {
   CheckCircle,
   XCircle,
   Clock,
   Eye,
   FileText,
-  ChevronRight,
-  AlertCircle,
+  ExternalLink,
+  ShieldCheck,
 } from "lucide-react";
+import { formatDate, getInitials } from "@/lib/utils";
 import { KYC_DOCUMENT_LABELS } from "@/constants";
 
-// Mock data for KYC reviews
-const pendingReviews = [
-  {
-    id: "1",
-    userId: "user1",
-    user: {
-      fullName: "María García",
-      email: "maria@example.com",
-      avatarUrl: null,
-    },
-    submittedAt: "2024-02-10",
-    documents: [
-      { type: "id_document", status: "PENDING" },
-      { type: "license", status: "PENDING" },
-      { type: "selfie", status: "PENDING" },
-    ],
-  },
-  {
-    id: "2",
-    userId: "user2",
-    user: {
-      fullName: "Juan Pérez",
-      email: "juan@example.com",
-      avatarUrl: null,
-    },
-    submittedAt: "2024-02-09",
-    documents: [
-      { type: "id_document", status: "PENDING" },
-      { type: "license", status: "PENDING" },
-      { type: "selfie", status: "PENDING" },
-    ],
-  },
-];
+interface KYCUser {
+  id: string;
+  fullName: string;
+  email: string;
+  avatarUrl: string | null;
+  kycStatus: string;
+  createdAt: string;
+  kycDocuments: Array<{
+    id: string;
+    type: string;
+    documentUrl: string;
+    status: string;
+    reviewedBy: string | null;
+    reviewedAt: string | null;
+    notes: string | null;
+    createdAt: string;
+  }>;
+}
 
-const recentDecisions = [
-  {
-    id: "3",
-    userId: "user3",
-    user: {
-      fullName: "Ana Martínez",
-      email: "ana@example.com",
-    },
-    status: "VERIFIED",
-    reviewedAt: "2024-02-10",
-    reviewedBy: "Admin",
-  },
-  {
-    id: "4",
-    userId: "user4",
-    user: {
-      fullName: "Carlos López",
-      email: "carlos@example.com",
-    },
-    status: "REJECTED",
-    reviewedAt: "2024-02-09",
-    reviewedBy: "Admin",
-    notes: "Documento ilegible",
-  },
-];
+interface KYCResponse {
+  users: KYCUser[];
+  total: number;
+}
+
+const kycBadgeVariant: Record<string, "success" | "warning" | "destructive"> = {
+  VERIFIED: "success",
+  PENDING: "warning",
+  REJECTED: "destructive",
+};
+
+const kycLabels: Record<string, string> = {
+  VERIFIED: "Verificado",
+  PENDING: "Pendiente",
+  REJECTED: "Rechazado",
+};
 
 export default function AdminKYCPage() {
+  const [tab, setTab] = useState("PENDING");
+  const [data, setData] = useState<KYCResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  // Dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogAction, setDialogAction] = useState<"VERIFIED" | "REJECTED">("VERIFIED");
+  const [dialogUserId, setDialogUserId] = useState<string | null>(null);
+  const [dialogNotes, setDialogNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const fetchKYC = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/kyc?status=${tab}`);
+      if (res.ok) {
+        setData(await res.json());
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    fetchKYC();
+  }, [fetchKYC]);
+
+  const openActionDialog = (userId: string, action: "VERIFIED" | "REJECTED") => {
+    setDialogUserId(userId);
+    setDialogAction(action);
+    setDialogNotes("");
+    setDialogOpen(true);
+  };
+
+  const handleAction = async () => {
+    if (!dialogUserId) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/kyc/${dialogUserId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: dialogAction,
+          notes: dialogNotes || undefined,
+        }),
+      });
+
+      if (res.ok) {
+        toast({
+          title: dialogAction === "VERIFIED" ? "KYC aprobado" : "KYC rechazado",
+        });
+        setDialogOpen(false);
+        fetchKYC();
+      } else {
+        const err = await res.json();
+        toast({ title: "Error", description: err.error, variant: "destructive" });
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="container py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Verificación KYC</h1>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold">Verificacion KYC</h1>
         <p className="text-muted-foreground">
-          Revisa y aprueba solicitudes de verificación de identidad
+          Revisa y aprueba solicitudes de verificacion de identidad
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3 mb-8">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Pendientes de revisión
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-yellow-500">
-              {pendingReviews.length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Aprobados (este mes)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-500">
-              {recentDecisions.filter((d) => d.status === "VERIFIED").length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Rechazados (este mes)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-red-500">
-              {recentDecisions.filter((d) => d.status === "REJECTED").length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tabs */}
-      <Tabs defaultValue="pending">
-        <TabsList className="mb-4">
-          <TabsTrigger value="pending">
-            Pendientes ({pendingReviews.length})
-          </TabsTrigger>
-          <TabsTrigger value="reviewed">Revisados</TabsTrigger>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="PENDING">Pendientes</TabsTrigger>
+          <TabsTrigger value="VERIFIED">Verificados</TabsTrigger>
+          <TabsTrigger value="REJECTED">Rechazados</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pending">
-          {pendingReviews.length > 0 ? (
+        <TabsContent value={tab}>
+          {loading ? (
             <div className="space-y-4">
-              {pendingReviews.map((review) => (
-                <Card key={review.id}>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 w-full" />
+              ))}
+            </div>
+          ) : !data || data.users.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                {tab === "PENDING" ? (
+                  <>
+                    <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Todo al dia</h3>
+                    <p className="text-muted-foreground text-center">
+                      No hay solicitudes pendientes de revision
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="h-12 w-12 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">
+                      No hay usuarios {tab === "VERIFIED" ? "verificados" : "rechazados"}
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {data.users.map((user) => (
+                <Card key={user.id}>
                   <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-4 min-w-0">
                         <Avatar>
-                          <AvatarFallback>
-                            {review.user.fullName.charAt(0)}
-                          </AvatarFallback>
+                          <AvatarImage src={user.avatarUrl || undefined} />
+                          <AvatarFallback>{getInitials(user.fullName)}</AvatarFallback>
                         </Avatar>
-                        <div>
-                          <h3 className="font-semibold">{review.user.fullName}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {review.user.email}
-                          </p>
-                          <div className="mt-2 flex gap-2">
-                            {review.documents.map((doc) => (
-                              <Badge key={doc.type} variant="outline">
-                                {KYC_DOCUMENT_LABELS[doc.type]}
+                        <div className="min-w-0">
+                          <h3 className="font-semibold">{user.fullName}</h3>
+                          <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {user.kycDocuments.map((doc) => (
+                              <Badge key={doc.id} variant="outline" className="text-xs">
+                                {KYC_DOCUMENT_LABELS[doc.type] || doc.type}
                               </Badge>
                             ))}
                           </div>
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <Badge variant="warning">
-                          <Clock className="mr-1 h-3 w-3" />
-                          Enviado {new Date(review.submittedAt).toLocaleDateString("es-UY")}
+                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <Badge variant={kycBadgeVariant[user.kycStatus] || "secondary"}>
+                          {tab === "PENDING" && <Clock className="mr-1 h-3 w-3" />}
+                          {tab === "VERIFIED" && <CheckCircle className="mr-1 h-3 w-3" />}
+                          {tab === "REJECTED" && <XCircle className="mr-1 h-3 w-3" />}
+                          {kycLabels[user.kycStatus]}
                         </Badge>
-                        <Button asChild>
-                          <Link href={`/admin/kyc/${review.id}`}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Revisar
-                          </Link>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(user.kycDocuments[0]?.createdAt || user.createdAt)}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          {expandedUser === user.id ? "Ocultar" : "Ver documentos"}
                         </Button>
                       </div>
                     </div>
+
+                    {/* Expanded Documents */}
+                    {expandedUser === user.id && (
+                      <div className="mt-4 pt-4 border-t">
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                          {user.kycDocuments.map((doc) => (
+                            <div key={doc.id} className="border rounded-md p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium">
+                                  {KYC_DOCUMENT_LABELS[doc.type] || doc.type}
+                                </span>
+                                <Badge variant={kycBadgeVariant[doc.status] || "secondary"} className="text-xs">
+                                  {kycLabels[doc.status]}
+                                </Badge>
+                              </div>
+                              {/* Preview image */}
+                              <div className="relative aspect-video rounded bg-muted mb-2 overflow-hidden">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={doc.documentUrl}
+                                  alt={KYC_DOCUMENT_LABELS[doc.type] || doc.type}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                              <Button variant="outline" size="sm" className="w-full" asChild>
+                                <a href={doc.documentUrl} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="h-3 w-3 mr-2" />
+                                  Ver completo
+                                </a>
+                              </Button>
+                              {doc.notes && (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  Nota: {doc.notes}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Action buttons for pending */}
+                        {tab === "PENDING" && (
+                          <div className="flex gap-2 mt-4 justify-end">
+                            <Button
+                              variant="outline"
+                              className="text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => openActionDialog(user.id, "REJECTED")}
+                            >
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Rechazar
+                            </Button>
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() => openActionDialog(user.id, "VERIFIED")}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Aprobar
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
             </div>
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <CheckCircle className="h-12 w-12 text-green-500 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  ¡Todo al día!
-                </h3>
-                <p className="text-muted-foreground text-center">
-                  No hay solicitudes pendientes de revisión
-                </p>
-              </CardContent>
-            </Card>
           )}
         </TabsContent>
-
-        <TabsContent value="reviewed">
-          <div className="space-y-4">
-            {recentDecisions.map((decision) => (
-              <Card key={decision.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <Avatar>
-                        <AvatarFallback>
-                          {decision.user.fullName.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h3 className="font-semibold">{decision.user.fullName}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {decision.user.email}
-                        </p>
-                        {decision.notes && (
-                          <p className="text-sm text-red-500 mt-1">
-                            Nota: {decision.notes}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <Badge
-                        variant={
-                          decision.status === "VERIFIED" ? "success" : "destructive"
-                        }
-                      >
-                        {decision.status === "VERIFIED" ? (
-                          <CheckCircle className="mr-1 h-3 w-3" />
-                        ) : (
-                          <XCircle className="mr-1 h-3 w-3" />
-                        )}
-                        {decision.status === "VERIFIED" ? "Aprobado" : "Rechazado"}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">
-                        Revisado el{" "}
-                        {new Date(decision.reviewedAt).toLocaleDateString("es-UY")}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
       </Tabs>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {dialogAction === "VERIFIED" ? "Aprobar verificacion KYC" : "Rechazar verificacion KYC"}
+            </DialogTitle>
+            <DialogDescription>
+              {dialogAction === "VERIFIED"
+                ? "El usuario podra operar como conductor y/o anfitrion."
+                : "El usuario debera volver a enviar sus documentos."}
+            </DialogDescription>
+          </DialogHeader>
+          <div>
+            <Label className="text-sm mb-2 block">Notas (opcional)</Label>
+            <Textarea
+              value={dialogNotes}
+              onChange={(e) => setDialogNotes(e.target.value)}
+              placeholder={
+                dialogAction === "REJECTED"
+                  ? "Motivo del rechazo..."
+                  : "Notas adicionales..."
+              }
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleAction}
+              disabled={submitting}
+              className={dialogAction === "VERIFIED" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
+            >
+              {submitting
+                ? "Procesando..."
+                : dialogAction === "VERIFIED"
+                ? "Confirmar aprobacion"
+                : "Confirmar rechazo"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

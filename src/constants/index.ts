@@ -144,6 +144,31 @@ export const USER_ROLE_LABELS: Record<string, string> = {
   [USER_ROLES.ADMIN]: "Administrador",
 };
 
+// Admin permissions
+export const ADMIN_PERMISSIONS = {
+  FULL: "admin:full",
+  USERS: "admin:users",
+  VEHICLES: "admin:vehicles",
+  BOOKINGS: "admin:bookings",
+  PAYMENTS: "admin:payments",
+  KYC: "admin:kyc",
+  SETTINGS: "admin:settings",
+  INCIDENTS: "admin:incidents",
+} as const;
+
+export type AdminPermission = (typeof ADMIN_PERMISSIONS)[keyof typeof ADMIN_PERMISSIONS];
+
+export const ADMIN_PERMISSION_LABELS: Record<string, string> = {
+  [ADMIN_PERMISSIONS.FULL]: "Acceso total",
+  [ADMIN_PERMISSIONS.USERS]: "Gestión de usuarios",
+  [ADMIN_PERMISSIONS.VEHICLES]: "Gestión de vehículos",
+  [ADMIN_PERMISSIONS.BOOKINGS]: "Gestión de reservas",
+  [ADMIN_PERMISSIONS.PAYMENTS]: "Pagos e ingresos",
+  [ADMIN_PERMISSIONS.KYC]: "Verificación KYC",
+  [ADMIN_PERMISSIONS.SETTINGS]: "Configuración de plataforma",
+  [ADMIN_PERMISSIONS.INCIDENTS]: "Gestión de incidentes",
+};
+
 // Map defaults (Montevideo, Uruguay)
 export const DEFAULT_LOCATION = {
   lat: -34.9011,

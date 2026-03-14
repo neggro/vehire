@@ -30,6 +30,8 @@ import {
   VehicleMapCard,
   type VehicleCardData,
 } from "./vehicle-cards";
+import { getUserFavoriteIds } from "@/actions/favorites";
+import { createClient } from "@/lib/supabase/client";
 
 interface SearchResponse {
   vehicles: VehicleCardData[];
@@ -187,6 +189,8 @@ export default function SearchWithMap() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [vehicles, setVehicles] = useState<VehicleCardData[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 12,
@@ -223,6 +227,17 @@ export default function SearchWithMap() {
       endTime: searchParams.get("endTime") || "10:00",
     };
   });
+
+  // Fetch user auth state and favorites on mount
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setIsLoggedIn(true);
+        getUserFavoriteIds().then((ids) => setFavoriteIds(new Set(ids)));
+      }
+    });
+  }, []);
 
   // Search key for deduplication
   const currentSearchKey = useMemo(() => {
@@ -579,7 +594,7 @@ export default function SearchWithMap() {
             {viewMode === "grid" && vehicles.length > 0 && (
               <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {vehicles.map((vehicle) => (
-                  <VehicleCard key={vehicle.id} vehicle={vehicle} />
+                  <VehicleCard key={vehicle.id} vehicle={vehicle} isFavorite={favoriteIds.has(vehicle.id)} isLoggedIn={isLoggedIn} />
                 ))}
               </div>
             )}
@@ -592,6 +607,8 @@ export default function SearchWithMap() {
                     <VehicleListItem
                       vehicle={vehicle}
                       isSelected={selectedVehicleId === vehicle.id}
+                      isFavorite={favoriteIds.has(vehicle.id)}
+                      isLoggedIn={isLoggedIn}
                     />
                   </div>
                 ))}

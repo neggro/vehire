@@ -2,8 +2,9 @@
 
 import { useState, useRef, useCallback } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, Heart, Share2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { FavoriteButton } from "@/components/search/favorite-button";
 
 interface ImageData {
   id: string;
@@ -15,9 +16,12 @@ interface ImageData {
 interface ImageGalleryProps {
   images: ImageData[];
   vehicleName: string;
+  vehicleId: string;
+  isFavorite?: boolean;
+  isLoggedIn?: boolean;
 }
 
-export function ImageGallery({ images, vehicleName }: ImageGalleryProps) {
+export function ImageGallery({ images, vehicleName, vehicleId, isFavorite = false, isLoggedIn = false }: ImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const { toast } = useToast();
@@ -74,12 +78,6 @@ export function ImageGallery({ images, vehicleName }: ImageGalleryProps) {
     }
   };
 
-  const handleFavorite = () => {
-    toast({
-      title: "Agregado a favoritos",
-      description: "Esta función estará disponible pronto",
-    });
-  };
 
   return (
     <div
@@ -178,13 +176,11 @@ export function ImageGallery({ images, vehicleName }: ImageGalleryProps) {
         >
           <Share2 className="h-5 w-5" />
         </button>
-        <button
-          onClick={handleFavorite}
-          className="rounded-full bg-white/80 p-2 shadow-lg hover:bg-white transition-colors"
-          aria-label="Agregar a favoritos"
-        >
-          <Heart className="h-5 w-5" />
-        </button>
+        <FavoriteButton
+          vehicleId={vehicleId}
+          isFavorite={isFavorite}
+          isLoggedIn={isLoggedIn}
+        />
       </div>
     </div>
   );

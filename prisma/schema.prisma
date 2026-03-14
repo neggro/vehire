@@ -15,6 +15,7 @@ model User {
   fullName             String
   avatarUrl            String?
   roles                UserRole[]          @default([USER, DRIVER])
+  adminPermissions     String[]            @default([])
   kycStatus            KYCStatus           @default(PENDING)
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
@@ -27,6 +28,7 @@ model User {
   reviewsReceived      Review[]            @relation("ReviewsReceived")
   reviewsGiven         Review[]            @relation("ReviewsGiven")
   vehicles             Vehicle[]           @relation("HostVehicles")
+  favorites            Favorite[]
 
   @@index([email])
   @@map("users")
@@ -342,6 +344,7 @@ model Favorite {
   userId    String
   vehicleId String
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, vehicleId])
