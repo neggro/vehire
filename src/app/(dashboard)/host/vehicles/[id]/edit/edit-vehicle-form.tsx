@@ -22,6 +22,8 @@ import {
   VEHICLE_FEATURES,
   VEHICLE_STATUS_LABELS,
 } from "@/constants";
+import { OTHER_OPTION } from "@/constants/vehicles";
+import { MakeModelSelect, resolveMakeModel, initMakeModelState } from "@/components/vehicle/make-model-select";
 import {
   ArrowLeft,
   Loader2,
@@ -82,7 +84,16 @@ export default function EditVehicleForm({ initialData }: EditVehicleFormProps) {
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>(initialData.features);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
-  const [formData, setFormData] = useState<VehicleFormData>(initialData);
+  // Initialize make/model select state from existing data
+  const initState = initMakeModelState(initialData.make, initialData.model);
+  const [customMake, setCustomMake] = useState(initState.customMake);
+  const [customModel, setCustomModel] = useState(initState.customModel);
+
+  const [formData, setFormData] = useState<VehicleFormData>({
+    ...initialData,
+    make: initState.make,
+    model: initState.model,
+  });
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -150,10 +161,14 @@ export default function EditVehicleForm({ initialData }: EditVehicleFormProps) {
       const allImages = [...existingUrls, ...uploadedUrls];
 
       // Call server action to update vehicle
+      const { make: resolvedMake, model: resolvedModel } = resolveMakeModel(
+        formData.make, formData.model, customMake, customModel
+      );
+
       const result = await updateVehicle({
         vehicleId: formData.id,
-        make: formData.make,
-        model: formData.model,
+        make: resolvedMake,
+        model: resolvedModel,
         year: parseInt(formData.year),
         color: formData.color,
         plateNumber: formData.plateNumber,
@@ -213,10 +228,11 @@ export default function EditVehicleForm({ initialData }: EditVehicleFormProps) {
 
   const canProceed = () => {
     switch (currentStep) {
-      case 1:
+      case 1: {
+        const resolved = resolveMakeModel(formData.make, formData.model, customMake, customModel);
         return (
-          formData.make &&
-          formData.model &&
+          resolved.make &&
+          resolved.model &&
           formData.year &&
           formData.color &&
           formData.plateNumber &&
@@ -224,6 +240,7 @@ export default function EditVehicleForm({ initialData }: EditVehicleFormProps) {
           formData.transmission &&
           formData.fuelType
         );
+      }
       case 2:
         return formData.city;
       case 3:
@@ -265,7 +282,9 @@ export default function EditVehicleForm({ initialData }: EditVehicleFormProps) {
           <div>
             <h1 className="text-3xl font-bold">Editar vehículo</h1>
             <p className="text-muted-foreground">
-              {formData.make} {formData.model} {formData.year}
+              {resolveMakeModel(formData.make, formData.model, customMake, customModel).make}{" "}
+              {resolveMakeModel(formData.make, formData.model, customMake, customModel).model}{" "}
+              {formData.year}
             </p>
           </div>
           <Badge variant={getStatusBadgeVariant(formData.status) as any}>
@@ -326,30 +345,16 @@ export default function EditVehicleForm({ initialData }: EditVehicleFormProps) {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="make">Marca *</Label>
-                  <Input
-                    id="make"
-                    name="make"
-                    placeholder="Ej: Toyota"
-                    value={formData.make}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="model">Modelo *</Label>
-                  <Input
-                    id="model"
-                    name="model"
-                    placeholder="Ej: Corolla"
-                    value={formData.model}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
+              <MakeModelSelect
+                make={formData.make}
+                model={formData.model}
+                customMake={customMake}
+                customModel={customModel}
+                onMakeChange={(v) => setFormData((prev) => ({ ...prev, make: v }))}
+                onModelChange={(v) => setFormData((prev) => ({ ...prev, model: v }))}
+                onCustomMakeChange={setCustomMake}
+                onCustomModelChange={setCustomModel}
+              />
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
@@ -767,7 +772,9 @@ export default function EditVehicleForm({ initialData }: EditVehicleFormProps) {
                 <div className="space-y-2 text-sm">
                   <p>
                     <span className="text-muted-foreground">Vehículo:</span>{" "}
-                    {formData.make} {formData.model} {formData.year}
+                    {resolveMakeModel(formData.make, formData.model, customMake, customModel).make}{" "}
+                    {resolveMakeModel(formData.make, formData.model, customMake, customModel).model}{" "}
+                    {formData.year}
                   </p>
                   <p>
                     <span className="text-muted-foreground">Ubicación:</span>{" "}

@@ -20,6 +20,8 @@ import {
   TRANSMISSION_LABELS,
   VEHICLE_FEATURES,
 } from "@/constants";
+import { OTHER_OPTION } from "@/constants/vehicles";
+import { MakeModelSelect, resolveMakeModel } from "@/components/vehicle/make-model-select";
 import {
   ArrowLeft,
   Loader2,
@@ -48,6 +50,8 @@ export default function NewVehiclePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [customMake, setCustomMake] = useState("");
+  const [customModel, setCustomModel] = useState("");
 
   const [formData, setFormData] = useState({
     // Basic info
@@ -141,10 +145,15 @@ export default function NewVehiclePage() {
         uploadedUrls = urls;
       }
 
+      // Resolve make/model from dropdown or custom input
+      const { make: resolvedMake, model: resolvedModel } = resolveMakeModel(
+        formData.make, formData.model, customMake, customModel
+      );
+
       // Call server action to create vehicle
       const result = await createVehicle({
-        make: formData.make,
-        model: formData.model,
+        make: resolvedMake,
+        model: resolvedModel,
         year: parseInt(formData.year),
         color: formData.color,
         plateNumber: formData.plateNumber,
@@ -204,10 +213,11 @@ export default function NewVehiclePage() {
 
   const canProceed = () => {
     switch (currentStep) {
-      case 1:
+      case 1: {
+        const resolved = resolveMakeModel(formData.make, formData.model, customMake, customModel);
         return (
-          formData.make &&
-          formData.model &&
+          resolved.make &&
+          resolved.model &&
           formData.year &&
           formData.color &&
           formData.plateNumber &&
@@ -215,6 +225,7 @@ export default function NewVehiclePage() {
           formData.transmission &&
           formData.fuelType
         );
+      }
       case 2:
         return formData.city;
       case 3:
@@ -295,30 +306,16 @@ export default function NewVehiclePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="make">Marca *</Label>
-                  <Input
-                    id="make"
-                    name="make"
-                    placeholder="Ej: Toyota"
-                    value={formData.make}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="model">Modelo *</Label>
-                  <Input
-                    id="model"
-                    name="model"
-                    placeholder="Ej: Corolla"
-                    value={formData.model}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
+              <MakeModelSelect
+                make={formData.make}
+                model={formData.model}
+                customMake={customMake}
+                customModel={customModel}
+                onMakeChange={(v) => setFormData((prev) => ({ ...prev, make: v }))}
+                onModelChange={(v) => setFormData((prev) => ({ ...prev, model: v }))}
+                onCustomMakeChange={setCustomMake}
+                onCustomModelChange={setCustomModel}
+              />
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
@@ -736,7 +733,9 @@ export default function NewVehiclePage() {
                 <div className="space-y-2 text-sm">
                   <p>
                     <span className="text-muted-foreground">Vehículo:</span>{" "}
-                    {formData.make} {formData.model} {formData.year}
+                    {resolveMakeModel(formData.make, formData.model, customMake, customModel).make}{" "}
+                    {resolveMakeModel(formData.make, formData.model, customMake, customModel).model}{" "}
+                    {formData.year}
                   </p>
                   <p>
                     <span className="text-muted-foreground">Ubicación:</span>{" "}
