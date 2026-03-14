@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Mail, Bell, ShoppingCart, Calendar, CreditCard, Star, Megaphone, Loader2 } from "lucide-react";
+import { EmailSettingsPageSkeleton } from "@/components/skeletons";
 import Link from "next/link";
 
 interface EmailSettings {
@@ -86,11 +87,7 @@ export default function EmailSettingsPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="container py-8 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <EmailSettingsPageSkeleton />;
   }
 
   return (

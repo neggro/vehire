@@ -70,60 +70,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check availability - look for overlapping bookings
-    const existingBookings = await prisma.booking.findMany({
-      where: {
-        vehicleId,
-        status: { in: ["PENDING", "CONFIRMED", "ACTIVE"] },
-        OR: [
-          {
-            AND: [
-              { startDate: { lte: start } },
-              { endDate: { gte: start } },
-            ],
-          },
-          {
-            AND: [
-              { startDate: { lte: end } },
-              { endDate: { gte: end } },
-            ],
-          },
-          {
-            AND: [
-              { startDate: { gte: start } },
-              { endDate: { lte: end } },
-            ],
-          },
-        ],
-      },
-    });
-
-    if (existingBookings.length > 0) {
-      return NextResponse.json(
-        { error: "El vehículo no está disponible en las fechas seleccionadas" },
-        { status: 400 }
-      );
-    }
-
-    // Check explicit availability blocks
-    const blockedDates = await prisma.availability.findMany({
-      where: {
-        vehicleId,
-        date: {
-          gte: start,
-          lte: end,
-        },
-        isAvailable: false,
-      },
-    });
-
-    if (blockedDates.length > 0) {
-      return NextResponse.json(
-        { error: "El vehículo tiene días no disponibles en el rango seleccionado" },
-        { status: 400 }
-      );
-    }
-
     // Calculate booking amounts
     const calculation = calculateBookingAmount({
       basePriceDay: vehicle.basePriceDay,
@@ -133,12 +79,6 @@ export async function POST(request: NextRequest) {
       deliveryAvailable: withDelivery,
       deliveryPrice: vehicle.deliveryPrice,
       estimatedValue: vehicle.estimatedValue,
-    });
-
-    // Get driver info
-    const driver = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { email: true, fullName: true },
     });
 
     // Check if user has an existing pending booking for this vehicle and dates
@@ -152,7 +92,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // If there's an existing pending booking, return it instead of creating a new one
     if (existingPendingBooking) {
       return NextResponse.json({
         bookingId: existingPendingBooking.id,
@@ -162,45 +101,91 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Create booking in database
-    const booking = await prisma.booking.create({
-      data: {
-        driverId: user.id,
-        hostId: vehicle.hostId,
-        vehicleId: vehicle.id,
-        startDate: start,
-        endDate: end,
-        baseAmount: calculation.baseAmount,
-        deliveryFee: calculation.deliveryFee,
-        platformFee: calculation.platformFee,
-        depositAmount: calculation.depositAmount,
-        totalAmount: calculation.totalAmount,
-        status: "PENDING",
-        pickupLocation: withDelivery ? deliveryAddress : vehicle.address,
-        returnLocation: withDelivery ? deliveryAddress : vehicle.address,
-      },
+    // Use transaction to prevent race conditions on availability check + booking creation
+    const result = await prisma.$transaction(async (tx) => {
+      // Check availability - overlapping bookings (simplified condition)
+      const existingBookings = await tx.booking.findMany({
+        where: {
+          vehicleId,
+          status: { in: ["PENDING", "CONFIRMED", "ACTIVE"] },
+          startDate: { lt: end },
+          endDate: { gt: start },
+        },
+      });
+
+      if (existingBookings.length > 0) {
+        throw new Error("VEHICLE_UNAVAILABLE");
+      }
+
+      // Check explicit availability blocks
+      const blockedDates = await tx.availability.findMany({
+        where: {
+          vehicleId,
+          date: { gte: start, lte: end },
+          isAvailable: false,
+        },
+        take: 1,
+      });
+
+      if (blockedDates.length > 0) {
+        throw new Error("DATES_BLOCKED");
+      }
+
+      // Create booking
+      const booking = await tx.booking.create({
+        data: {
+          driverId: user.id,
+          hostId: vehicle.hostId,
+          vehicleId: vehicle.id,
+          startDate: start,
+          endDate: end,
+          baseAmount: calculation.baseAmount,
+          deliveryFee: calculation.deliveryFee,
+          platformFee: calculation.platformFee,
+          depositAmount: calculation.depositAmount,
+          totalAmount: calculation.totalAmount,
+          status: "PENDING",
+          pickupLocation: withDelivery ? deliveryAddress : vehicle.address,
+          returnLocation: withDelivery ? deliveryAddress : vehicle.address,
+        },
+      });
+
+      // Create payment record
+      const payment = await tx.payment.create({
+        data: {
+          bookingId: booking.id,
+          amount: calculation.totalAmount,
+          platformFee: calculation.platformFee,
+          hostPayout: calculation.hostPayout,
+          depositAmount: calculation.depositAmount,
+          status: "PENDING",
+        },
+      });
+
+      return { booking, payment };
     });
 
-    // Create payment record
-    const payment = await prisma.payment.create({
-      data: {
-        bookingId: booking.id,
-        amount: calculation.totalAmount,
-        platformFee: calculation.platformFee,
-        hostPayout: calculation.hostPayout,
-        depositAmount: calculation.depositAmount,
-        status: "PENDING",
-      },
-    });
-
-    // Return booking info - payment will be handled by /api/payments
     return NextResponse.json({
-      bookingId: booking.id,
+      bookingId: result.booking.id,
       status: "PENDING",
       totalAmount: calculation.totalAmount,
-      paymentId: payment.id,
+      paymentId: result.payment.id,
     });
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "VEHICLE_UNAVAILABLE") {
+        return NextResponse.json(
+          { error: "El vehículo no está disponible en las fechas seleccionadas" },
+          { status: 400 }
+        );
+      }
+      if (error.message === "DATES_BLOCKED") {
+        return NextResponse.json(
+          { error: "El vehículo tiene días no disponibles en el rango seleccionado" },
+          { status: 400 }
+        );
+      }
+    }
     console.error("Error creating booking:", error);
     return NextResponse.json(
       { error: "Error al crear la reserva" },

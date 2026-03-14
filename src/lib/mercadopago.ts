@@ -78,8 +78,6 @@ export async function createPaymentPreference(
     baseBody.notification_url = params.notificationUrl;
   }
 
-  console.log("Creating preference with body:", JSON.stringify(baseBody, null, 2));
-
   const response = await preference.create({ body: baseBody as any });
 
   return {
@@ -99,23 +97,18 @@ export function verifyWebhookSignature(
   signature: string | null,
   payload: string
 ): boolean {
-  // In development, skip verification
-  if (process.env.NODE_ENV === "development") {
-    return true;
-  }
+  const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
 
-  // If no signature provided, reject in production
-  if (!signature) {
-    console.warn("Webhook received without signature");
+  // Require webhook secret in all environments
+  if (!secret) {
+    console.error("MERCADOPAGO_WEBHOOK_SECRET not configured - rejecting webhook");
     return false;
   }
 
-  const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
-
-  // If no secret configured, log warning but allow (for initial setup)
-  if (!secret) {
-    console.warn("MERCADOPAGO_WEBHOOK_SECRET not configured - skipping signature verification");
-    return true;
+  // If no signature provided, reject
+  if (!signature) {
+    console.warn("Webhook received without signature");
+    return false;
   }
 
   try {
@@ -275,12 +268,6 @@ export async function createCardPayment(
     baseBody.notification_url = params.notificationUrl;
   }
 
-  // Debug log
-  console.log("Creating payment with body:", JSON.stringify({
-    ...baseBody,
-    token: baseBody.token ? `${(baseBody.token as string).substring(0, 8)}...` : undefined,
-  }, null, 2));
-
   const response = await payment.create({ body: baseBody as any });
 
   return {
@@ -302,7 +289,12 @@ export async function createCardPayment(
  */
 export async function getPaymentMethods(): Promise<PaymentMethodOption[]> {
   const response = await fetch(
-    `https://api.mercadopago.com/v1/payment_methods?access_token=${process.env.MERCADOPAGO_ACCESS_TOKEN}`
+    "https://api.mercadopago.com/v1/payment_methods",
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
+      },
+    }
   );
   const data = await response.json();
 
@@ -330,24 +322,16 @@ export async function getInstallments(
   paymentMethodId: string,
   amount: number // in cents
 ): Promise<InstallmentOption[]> {
-  const response = await fetch(
-    `https://api.mercadopago.com/v1/payment_methods/installments?access_token=${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  // For installments, we need to use the REST API directly
   const installmentsUrl = new URL("https://api.mercadopago.com/v1/payment_methods/installments");
-  installmentsUrl.searchParams.append("access_token", process.env.MERCADOPAGO_ACCESS_TOKEN || "");
   installmentsUrl.searchParams.append("payment_method_id", paymentMethodId);
-  installmentsUrl.searchParams.append("amount", (amount / 100).toString()); // Convert to currency units
+  installmentsUrl.searchParams.append("amount", (amount / 100).toString());
 
-  const installmentsResponse = await fetch(installmentsUrl.toString());
-  const data = await installmentsResponse.json();
+  const response = await fetch(installmentsUrl.toString(), {
+    headers: {
+      Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
+    },
+  });
+  const data = await response.json();
 
   return data.map((item: any) => ({
     paymentMethodId: item.payment_method_id,
@@ -371,7 +355,12 @@ export async function identifyCardType(bin: string): Promise<{
 
   try {
     const response = await fetch(
-      `https://api.mercadopago.com/v1/payment_methods/search?access_token=${process.env.MERCADOPAGO_ACCESS_TOKEN}&bins=${bin}`
+      `https://api.mercadopago.com/v1/payment_methods/search?bins=${bin}`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.MERCADOPAGO_ACCESS_TOKEN}`,
+        },
+      }
     );
     const data = await response.json();
 

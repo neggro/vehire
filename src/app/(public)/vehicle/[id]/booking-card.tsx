@@ -2,19 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { MapPin, Calendar, Shield, Clock, Loader2 } from "lucide-react";
-import { formatPrice } from "@/lib/utils";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CalendarIcon, Shield, Clock, Loader2 } from "lucide-react";
+import { cn, formatPrice } from "@/lib/utils";
 import { formatPriceFromCents, calculateBookingAmount, type BookingCalculation } from "@/lib/bookings";
-import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { TimePicker, TimeDisclaimer } from "@/components/ui/time-picker";
-import { getDateInTimezone, DEFAULT_TIMEZONE } from "@/lib/timezone";
 
 interface VehicleData {
   id: string;
@@ -34,24 +36,39 @@ interface BookingCardProps {
   vehicle: VehicleData;
 }
 
+// Generate time options in 30-minute intervals
+const timeOptions = Array.from({ length: 48 }, (_, i) => {
+  const h = Math.floor(i / 2);
+  const m = i % 2 === 0 ? "00" : "30";
+  return `${String(h).padStart(2, "0")}:${m}`;
+});
+
 export function BookingCard({ vehicle }: BookingCardProps) {
   const router = useRouter();
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Time selection - default to 10:00
+  // Time selection
   const [pickupTime, setPickupTime] = useState("10:00");
   const [returnTime, setReturnTime] = useState("10:00");
 
-  // Dates - default to tomorrow and +3 days (using timezone-aware dates)
+  // Calendar popover state
+  const [pickupOpen, setPickupOpen] = useState(false);
+  const [returnOpen, setReturnOpen] = useState(false);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Dates
   const [startDate, setStartDate] = useState<Date>(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
     return tomorrow;
   });
   const [endDate, setEndDate] = useState<Date>(() => {
     const date = new Date();
     date.setDate(date.getDate() + 4);
+    date.setHours(0, 0, 0, 0);
     return date;
   });
   const [withDelivery, setWithDelivery] = useState(false);
@@ -82,7 +99,6 @@ export function BookingCard({ vehicle }: BookingCardProps) {
 
     setIsLoading(true);
 
-    // Build URL with query params for booking page
     const params = new URLSearchParams({
       start: startDate.toISOString(),
       end: endDate.toISOString(),
@@ -94,7 +110,6 @@ export function BookingCard({ vehicle }: BookingCardProps) {
     router.push(`/booking/${vehicle.id}?${params.toString()}`);
   };
 
-  // Check if vehicle is available
   const isAvailable = vehicle.status === "ACTIVE";
   const isPaused = vehicle.status === "PAUSED";
 
@@ -114,66 +129,111 @@ export function BookingCard({ vehicle }: BookingCardProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Date pickers */}
+        {/* Date & Time pickers */}
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg border p-3">
-            <label className="text-xs text-muted-foreground">Retiro</label>
-            <input
-              type="date"
-              value={getDateInTimezone(startDate, DEFAULT_TIMEZONE)}
-              min={getDateInTimezone(new Date(), DEFAULT_TIMEZONE)}
-              onChange={(e) => {
-                const newStart = new Date(e.target.value + "T12:00:00");
-                setStartDate(newStart);
-                if (newStart >= endDate) {
-                  const newEnd = new Date(newStart);
-                  newEnd.setDate(newEnd.getDate() + 1);
-                  setEndDate(newEnd);
-                }
-              }}
-              className="w-full bg-transparent text-sm focus:outline-none"
-            />
-            <div className="mt-2">
-              <TimePicker
-                value={pickupTime}
-                onChange={setPickupTime}
-                disabled={!isAvailable}
-              />
-            </div>
+          {/* Pickup */}
+          <div className="rounded-lg border p-3 space-y-2">
+            <label className="text-xs font-medium text-muted-foreground">Retiro</label>
+            <Popover open={pickupOpen} onOpenChange={setPickupOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start text-left font-normal h-auto p-0 hover:bg-transparent",
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm">
+                    {format(startDate, "d MMM yyyy", { locale: es })}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setStartDate(date);
+                      if (date >= endDate) {
+                        const newEnd = new Date(date);
+                        newEnd.setDate(newEnd.getDate() + 1);
+                        setEndDate(newEnd);
+                      }
+                      setPickupOpen(false);
+                    }
+                  }}
+                  disabled={{ before: today }}
+                  fromMonth={today}
+                  locale={es}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <select
+              value={pickupTime}
+              onChange={(e) => setPickupTime(e.target.value)}
+              disabled={!isAvailable}
+              className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {timeOptions.map((time) => (
+                <option key={time} value={time}>{time}</option>
+              ))}
+            </select>
           </div>
-          <div className="rounded-lg border p-3">
-            <label className="text-xs text-muted-foreground">Devolución</label>
-            <input
-              type="date"
-              value={getDateInTimezone(endDate, DEFAULT_TIMEZONE)}
-              min={getDateInTimezone(startDate, DEFAULT_TIMEZONE)}
-              onChange={(e) => {
-                const newEnd = new Date(e.target.value + "T12:00:00");
-                setEndDate(newEnd);
-              }}
-              className="w-full bg-transparent text-sm focus:outline-none"
-            />
-            <div className="mt-2">
-              <TimePicker
-                value={returnTime}
-                onChange={setReturnTime}
-                disabled={!isAvailable}
-              />
-            </div>
+
+          {/* Return */}
+          <div className="rounded-lg border p-3 space-y-2">
+            <label className="text-xs font-medium text-muted-foreground">Devolución</label>
+            <Popover open={returnOpen} onOpenChange={setReturnOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "w-full justify-start text-left font-normal h-auto p-0 hover:bg-transparent",
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm">
+                    {format(endDate, "d MMM yyyy", { locale: es })}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={endDate}
+                  onSelect={(date) => {
+                    if (date) {
+                      setEndDate(date);
+                      setReturnOpen(false);
+                    }
+                  }}
+                  disabled={{ before: startDate }}
+                  fromMonth={startDate}
+                  defaultMonth={endDate}
+                  locale={es}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <select
+              value={returnTime}
+              onChange={(e) => setReturnTime(e.target.value)}
+              disabled={!isAvailable}
+              className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {timeOptions.map((time) => (
+                <option key={time} value={time}>{time}</option>
+              ))}
+            </select>
           </div>
         </div>
 
         {/* Time disclaimer */}
-        <TimeDisclaimer />
-
-        {/* Location */}
-        <div className="rounded-lg border p-3">
-          <label className="text-xs text-muted-foreground">Ubicación</label>
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">{vehicle.location.address || "Ver ubicación en el mapa"}</span>
-          </div>
-        </div>
+        <p className="text-xs text-muted-foreground">
+          * La hora es referencial. Se coordinará con el anfitrión.
+        </p>
 
         {/* Delivery option */}
         {vehicle.deliveryAvailable && vehicle.deliveryPrice && (

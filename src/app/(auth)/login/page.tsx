@@ -223,8 +223,16 @@ function LoginLoading() {
         <CardTitle className="text-2xl font-display">Bienvenido a {APP_NAME}</CardTitle>
         <CardDescription>Cargando...</CardDescription>
       </CardHeader>
-      <CardContent className="flex justify-center py-8">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <CardContent className="space-y-4 py-4">
+        <div className="space-y-2">
+          <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+          <div className="h-10 w-full bg-muted animate-pulse rounded-md" />
+        </div>
+        <div className="h-10 w-full bg-muted animate-pulse rounded-md" />
+        <div className="relative py-2">
+          <div className="h-px w-full bg-muted" />
+        </div>
+        <div className="h-10 w-full bg-muted animate-pulse rounded-md" />
       </CardContent>
     </Card>
   );

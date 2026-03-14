@@ -24,10 +24,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
+    // Validate file type against whitelist
+    const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { error: "Invalid file type" },
+        { error: "Invalid file type. Allowed: JPEG, PNG, WebP" },
+        { status: 400 }
+      );
+    }
+
+    // Validate file extension
+    const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
+    const fileExt = file.name.split(".").pop()?.toLowerCase();
+    if (!fileExt || !ALLOWED_EXTENSIONS.includes(fileExt)) {
+      return NextResponse.json(
+        { error: "Invalid file extension" },
         { status: 400 }
       );
     }
@@ -35,13 +46,10 @@ export async function POST(request: NextRequest) {
     // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       return NextResponse.json(
-        { error: "File too large" },
+        { error: "File too large (max 5MB)" },
         { status: 400 }
       );
     }
-
-    // Upload to Supabase Storage
-    const fileExt = file.name.split(".").pop();
     const fileName = `${user.id}/${type}-${Date.now()}.${fileExt}`;
 
     const { error: uploadError } = await supabase.storage

@@ -306,6 +306,21 @@ export async function deleteVehicle(vehicleId: string): Promise<CreateVehicleRes
       return { success: false, error: "No tienes permiso para eliminar este vehículo" };
     }
 
+    // Check for active bookings
+    const activeBookings = await prisma.booking.count({
+      where: {
+        vehicleId,
+        status: { in: ["PENDING", "CONFIRMED", "ACTIVE"] },
+      },
+    });
+
+    if (activeBookings > 0) {
+      return {
+        success: false,
+        error: "No puedes eliminar un vehículo con reservas activas. Cancela o completa las reservas primero.",
+      };
+    }
+
     // Delete images from storage
     const images = await prisma.vehicleImage.findMany({
       where: { vehicleId },

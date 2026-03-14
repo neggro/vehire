@@ -59,6 +59,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate payment method
+    const VALID_PAYMENT_METHODS = ["card", "wallet", "checkout_pro", "paypal"];
+    if (!paymentMethod || !VALID_PAYMENT_METHODS.includes(paymentMethod)) {
+      return NextResponse.json(
+        { error: "Método de pago no válido" },
+        { status: 400 }
+      );
+    }
+
+    // Validate installments
+    if (!Number.isInteger(installments) || installments < 1 || installments > 24) {
+      return NextResponse.json(
+        { error: "Número de cuotas no válido" },
+        { status: 400 }
+      );
+    }
+
+    // Validate card payment fields
+    if (paymentMethod === "card" && (!cardToken || !paymentMethodId)) {
+      return NextResponse.json(
+        { error: "Faltan datos de la tarjeta" },
+        { status: 400 }
+      );
+    }
+
     // Get the pending reservation with vehicle and user info
     const pendingReservation = await prisma.pendingReservation.findUnique({
       where: { id: pendingReservationId },
@@ -157,24 +182,7 @@ export async function POST(request: NextRequest) {
         notificationUrl,
       };
 
-      console.log("Creating payment with params:", {
-        transactionAmount: paymentParams.transactionAmount,
-        token: paymentParams.token ? `${paymentParams.token.substring(0, 8)}...` : null,
-        paymentMethodId: paymentParams.paymentMethodId,
-        installments: paymentParams.installments,
-        payer: {
-          email: paymentParams.payer.email,
-          identification: paymentParams.payer.identification,
-        },
-      });
-
       const paymentResponse = await createCardPayment(paymentParams);
-
-      console.log("Payment response:", {
-        id: paymentResponse.id,
-        status: paymentResponse.status,
-        statusDetail: paymentResponse.statusDetail,
-      });
 
       // If payment approved, create the booking and delete pending reservation
       if (paymentResponse.status === "approved") {
@@ -268,15 +276,9 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
-    console.error("Payment error:", JSON.stringify(error, null, 2));
-    // Extract more details from Mercado Pago error
-    const mpError = error as { message?: string; error?: string; status?: number; cause?: Array<{ code: number; description: string }> };
+    console.error("Payment error:", error);
     return NextResponse.json(
-      {
-        error: "Error al procesar el pago",
-        details: mpError.message || "Error desconocido",
-        cause: mpError.cause || [],
-      },
+      { error: "Error al procesar el pago" },
       { status: 500 }
     );
   }

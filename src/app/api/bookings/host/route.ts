@@ -33,6 +33,7 @@ export async function GET() {
             images: {
               select: { url: true },
               orderBy: { order: "asc" },
+              take: 1,
             },
           },
         },

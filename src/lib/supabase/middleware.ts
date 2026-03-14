@@ -38,10 +38,14 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Protected routes
-  const protectedPaths = ["/dashboard", "/host", "/driver", "/admin", "/booking"];
-  const isProtectedPath = protectedPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  );
+  const protectedPaths = ["/dashboard", "/driver", "/admin", "/booking"];
+  // /host dashboard routes (exact or known subroutes) — but not /host/[id] (public profile)
+  const hostDashboardPaths = ["/host/bookings", "/host/onboarding", "/host/settings", "/host/vehicles"];
+  const pathname = request.nextUrl.pathname;
+  const isProtectedPath =
+    protectedPaths.some((path) => pathname.startsWith(path)) ||
+    pathname === "/host" ||
+    hostDashboardPaths.some((path) => pathname.startsWith(path));
 
   if (isProtectedPath && !user) {
     // Redirect to login
@@ -67,6 +71,19 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
   }
+
+  // Security headers
+  supabaseResponse.headers.set("X-Frame-Options", "DENY");
+  supabaseResponse.headers.set("X-Content-Type-Options", "nosniff");
+  supabaseResponse.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  supabaseResponse.headers.set(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(self)"
+  );
+  supabaseResponse.headers.set(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains"
+  );
 
   return supabaseResponse;
 }

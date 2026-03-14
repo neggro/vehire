@@ -23,6 +23,7 @@ import { PaymentMethodSelector } from "@/components/payment";
 import { createBrowserClient } from "@/lib/supabase";
 import { convertUyuToUsd } from "@/lib/currency";
 import { formatDateInTimezone, DEFAULT_TIMEZONE } from "@/lib/timezone";
+import { BookingCheckoutPageSkeleton } from "@/components/skeletons";
 
 interface VehicleData {
   id: string;
@@ -402,11 +403,7 @@ function BookingContent() {
   };
 
   if (isFetching) {
-    return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <BookingCheckoutPageSkeleton />;
   }
 
   if (!vehicle) {
@@ -692,13 +689,7 @@ export default function BookingPage({
   params: Promise<{ id: string }>;
 }) {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-muted/30 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      }
-    >
+    <Suspense fallback={<BookingCheckoutPageSkeleton />}>
       <BookingContent />
     </Suspense>
   );

@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Calendar, ArrowRight, Loader2, AlertCircle, Car, Clock, MapPin } from "lucide-react";
+import { BookingSuccessPageSkeleton } from "@/components/skeletons";
 import { formatPriceFromCents } from "@/lib/bookings";
 
 interface BookingDetails {
@@ -77,11 +78,7 @@ function SuccessContent() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <BookingSuccessPageSkeleton />;
   }
 
   return (
@@ -216,13 +213,7 @@ function SuccessContent() {
 
 export default function BookingSuccessPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-muted/30 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      }
-    >
+    <Suspense fallback={<BookingSuccessPageSkeleton />}>
       <SuccessContent />
     </Suspense>
   );

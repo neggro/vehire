@@ -373,7 +373,11 @@ export async function voidAuthorization(authorizationId: string): Promise<{
  * Verify PayPal webhook signature
  * Validates that the webhook came from PayPal
  */
-export function verifyWebhookSignature(params: {
+/**
+ * Verify PayPal webhook signature using the PayPal Verification API
+ * This calls PayPal's API to verify the webhook event is authentic
+ */
+export async function verifyWebhookSignature(params: {
   authAlgo: string;
   certUrl: string;
   transmissionId: string;
@@ -381,42 +385,51 @@ export function verifyWebhookSignature(params: {
   transmissionTime: string;
   webhookId: string;
   body: string;
-  crc32: string;
-}): boolean {
-  // In development, skip verification
-  if (process.env.NODE_ENV === "development") {
-    console.log("Skipping PayPal webhook signature verification in development");
-    return true;
+}): Promise<boolean> {
+  const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+
+  if (!webhookId) {
+    console.error("PAYPAL_WEBHOOK_ID not configured - rejecting webhook");
+    return false;
   }
 
-  // For production, we need to verify the signature
-  // This is a simplified version - full verification requires fetching PayPal's certificate
-  // and verifying the cryptographic signature
-
-  const webhookSecret = process.env.PAYPAL_WEBHOOK_SECRET;
-
-  if (!webhookSecret) {
-    console.warn("PAYPAL_WEBHOOK_SECRET not configured - skipping signature verification");
-    return true;
+  if (!params.transmissionId || !params.transmissionSig || !params.transmissionTime) {
+    console.warn("PayPal webhook missing signature headers");
+    return false;
   }
 
   try {
-    // Create the expected signature string
-    const expectedSig = `${params.transmissionId}|${params.transmissionTime}|${params.webhookId}|${params.crc32}`;
+    const accessToken = await getAccessToken();
 
-    // Calculate HMAC
-    const calculatedSig = createHmac("sha256", webhookSecret)
-      .update(expectedSig)
-      .digest("hex");
+    const verificationBody = {
+      auth_algo: params.authAlgo,
+      cert_url: params.certUrl,
+      transmission_id: params.transmissionId,
+      transmission_sig: params.transmissionSig,
+      transmission_time: params.transmissionTime,
+      webhook_id: webhookId,
+      webhook_event: JSON.parse(params.body),
+    };
 
-    // In a full implementation, we would:
-    // 1. Fetch the certificate from params.certUrl
-    // 2. Extract the public key
-    // 3. Verify the signature using the public key
-    // For now, we use a simpler HMAC verification
+    const response = await fetch(
+      `${getBaseUrl()}/v1/notifications/verify-webhook-signature`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(verificationBody),
+      }
+    );
 
-    console.log("Webhook signature verification completed");
-    return true;
+    if (!response.ok) {
+      console.error("PayPal webhook verification API error:", await response.text());
+      return false;
+    }
+
+    const result = await response.json();
+    return result.verification_status === "SUCCESS";
   } catch (error) {
     console.error("Error verifying PayPal webhook signature:", error);
     return false;

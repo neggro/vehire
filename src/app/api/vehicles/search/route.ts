@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { MAX_PAGE_SIZE } from "@/constants";
 
 /**
  * GET /api/vehicles/search
@@ -32,8 +33,11 @@ export async function GET(request: NextRequest) {
     const fuelType = searchParams.get("fuelType");
     const minSeats = searchParams.get("minSeats");
     const sortBy = searchParams.get("sortBy") || "relevance";
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "12", 10);
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = Math.min(
+      Math.max(1, parseInt(searchParams.get("limit") || "12", 10)),
+      MAX_PAGE_SIZE
+    );
 
     // Build where clause
     const where: any = {
@@ -82,40 +86,13 @@ export async function GET(request: NextRequest) {
       const start = new Date(startDate);
       const end = new Date(endDate);
 
-      // Find bookings that overlap with the requested dates (including time)
+      // Find bookings that overlap with the requested dates
+      // Two ranges overlap when: start1 < end2 AND end1 > start2
       const overlappingBookings = await prisma.booking.findMany({
         where: {
           status: { in: ["PENDING", "CONFIRMED", "ACTIVE"] },
-          OR: [
-            // Booking starts before and ends after our start
-            {
-              AND: [
-                { startDate: { lte: start } },
-                { endDate: { gt: start } },
-              ],
-            },
-            // Booking starts before and ends after our end
-            {
-              AND: [
-                { startDate: { lt: end } },
-                { endDate: { gte: end } },
-              ],
-            },
-            // Booking is completely within our range
-            {
-              AND: [
-                { startDate: { gte: start } },
-                { endDate: { lte: end } },
-              ],
-            },
-            // Our range is completely within booking
-            {
-              AND: [
-                { startDate: { lte: start } },
-                { endDate: { gte: end } },
-              ],
-            },
-          ],
+          startDate: { lt: end },
+          endDate: { gt: start },
         },
         select: { vehicleId: true },
       });
@@ -175,9 +152,16 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             fullName: true,
-            reviewsReceived: {
+          },
+        },
+        bookings: {
+          select: {
+            review: {
               select: { rating: true },
             },
+          },
+          where: {
+            review: { isNot: null },
           },
         },
         images: {
@@ -193,11 +177,13 @@ export async function GET(request: NextRequest) {
 
     // Format response
     const formattedVehicles = vehicles.map((vehicle) => {
-      // Calculate average rating from host's reviews
-      const hostReviews = vehicle.host.reviewsReceived;
+      // Calculate average rating from vehicle-specific reviews
+      const vehicleReviews = vehicle.bookings
+        .map((b) => b.review)
+        .filter((r): r is { rating: number } => r !== null);
       const avgRating =
-        hostReviews.length > 0
-          ? hostReviews.reduce((sum, r) => sum + r.rating, 0) / hostReviews.length
+        vehicleReviews.length > 0
+          ? vehicleReviews.reduce((sum, r) => sum + r.rating, 0) / vehicleReviews.length
           : null;
 
       return {
@@ -215,7 +201,7 @@ export async function GET(request: NextRequest) {
         transmission: vehicle.transmission,
         fuelType: vehicle.fuelType,
         rating: avgRating,
-        reviewCount: hostReviews.length,
+        reviewCount: vehicleReviews.length,
         host: {
           id: vehicle.host.id,
           fullName: vehicle.host.fullName,

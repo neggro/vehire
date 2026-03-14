@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import {
+  MAX_VEHICLE_IMAGES,
+  MAX_IMAGE_SIZE_MB,
+  ALLOWED_IMAGE_TYPES,
+} from "@/constants";
+
+const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "webp"];
+const ALLOWED_BUCKETS = ["vehicle-images", "kyc-documents"];
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,8 +26,11 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-    const bucket = formData.get("bucket") as string || "vehicle-images";
-    const folder = formData.get("folder") as string || user.id;
+    const bucketParam = formData.get("bucket") as string || "vehicle-images";
+    const folder = user.id; // Always use user ID as folder, ignore user input
+
+    // Validate bucket against whitelist
+    const bucket = ALLOWED_BUCKETS.includes(bucketParam) ? bucketParam : "vehicle-images";
 
     // Get all files from form data
     const files: File[] = [];
@@ -38,13 +49,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (files.length > MAX_VEHICLE_IMAGES) {
+      return NextResponse.json(
+        { error: `Maximum ${MAX_VEHICLE_IMAGES} files allowed` },
+        { status: 400 }
+      );
+    }
+
     // Upload files
     const uploadedUrls: string[] = [];
     const errors: string[] = [];
 
     for (let index = 0; index < files.length; index++) {
       const file = files[index];
-      const fileExt = file.name.split(".").pop();
+
+      // Validate file size
+      if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+        errors.push(`File ${index}: exceeds ${MAX_IMAGE_SIZE_MB}MB limit`);
+        continue;
+      }
+
+      // Validate MIME type
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        errors.push(`File ${index}: invalid file type ${file.type}`);
+        continue;
+      }
+
+      // Validate extension
+      const fileExt = file.name.split(".").pop()?.toLowerCase();
+      if (!fileExt || !ALLOWED_EXTENSIONS.includes(fileExt)) {
+        errors.push(`File ${index}: invalid file extension`);
+        continue;
+      }
+
       const fileName = `${folder}/${index}-${Date.now()}.${fileExt}`;
 
       // Convert File to ArrayBuffer

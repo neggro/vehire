@@ -31,7 +31,7 @@ function Calendar({
         ),
         button_next: cn(
           buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-1"
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-5"
         ),
         month_grid: "w-full border-collapse space-y-1",
         weekdays: "flex",

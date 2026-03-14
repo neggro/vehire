@@ -25,6 +25,7 @@ import {
   XCircle,
   ArrowLeft,
 } from "lucide-react";
+import { BookingDetailsPageSkeleton } from "@/components/skeletons";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -180,11 +181,7 @@ export default function BookingDetailsPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="container max-w-4xl py-8 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <BookingDetailsPageSkeleton />;
   }
 
   if (error || !booking) {

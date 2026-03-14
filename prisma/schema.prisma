@@ -109,7 +109,9 @@ model Vehicle {
   host                 User                @relation("HostVehicles", fields: [hostId], references: [id], onDelete: Cascade)
 
   @@index([hostId])
+  @@index([hostId, status])
   @@index([status])
+  @@index([status, createdAt])
   @@index([city])
   @@index([locationLat, locationLng])
   @@map("vehicles")
@@ -137,6 +139,7 @@ model Availability {
 
   @@unique([vehicleId, date])
   @@index([vehicleId])
+  @@index([vehicleId, isAvailable, date])
   @@index([date])
   @@map("availabilities")
 }
@@ -180,8 +183,11 @@ model Booking {
   review             Review?
 
   @@index([driverId])
+  @@index([driverId, status])
   @@index([hostId])
+  @@index([hostId, status])
   @@index([vehicleId])
+  @@index([vehicleId, status, startDate, endDate])
   @@index([status])
   @@index([startDate, endDate])
   @@map("bookings")

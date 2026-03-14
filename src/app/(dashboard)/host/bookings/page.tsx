@@ -12,11 +12,11 @@ import {
   Calendar,
   Clock,
   Car,
-  Loader2,
   CheckCircle,
   XCircle,
   User,
 } from "lucide-react";
+import { HostBookingsPageSkeleton } from "@/components/skeletons";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -214,11 +214,7 @@ export default function HostBookingsPage() {
   );
 
   if (isLoading) {
-    return (
-      <div className="container max-w-4xl py-8 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <HostBookingsPageSkeleton />;
   }
 
   return (

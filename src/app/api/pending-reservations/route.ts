@@ -42,6 +42,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate time format (HH:MM)
+    const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+    if (!timeRegex.test(pickupTime) || !timeRegex.test(returnTime)) {
+      return NextResponse.json(
+        { error: "Invalid time format. Use HH:MM (e.g., 10:00)" },
+        { status: 400 }
+      );
+    }
+
+    // Validate amounts are positive integers
+    if (totalAmount < 0 || baseAmount < 0 || platformFee < 0 || depositAmount < 0) {
+      return NextResponse.json(
+        { error: "Invalid amounts" },
+        { status: 400 }
+      );
+    }
+
     // Get vehicle and check if it's active
     const vehicle = await prisma.vehicle.findUnique({
       where: { id: vehicleId },
@@ -232,50 +249,51 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" },
     });
 
-    // Check availability for each pending reservation
-    const reservationsWithAvailability = await Promise.all(
-      pendingReservations.map(async (pr) => {
-        // Check if there are now conflicting bookings
-        const conflictingBookings = await prisma.booking.findMany({
+    // Batch query: get all conflicting bookings for all pending reservations at once
+    const vehicleIds = Array.from(new Set(pendingReservations.map((pr) => pr.vehicleId)));
+    const allConflictingBookings = vehicleIds.length > 0
+      ? await prisma.booking.findMany({
           where: {
-            vehicleId: pr.vehicleId,
+            vehicleId: { in: vehicleIds },
             status: { in: ["CONFIRMED", "ACTIVE"] },
-            OR: [
-              {
-                AND: [
-                  { startDate: { lt: pr.endDate } },
-                  { endDate: { gt: pr.startDate } },
-                ],
-              },
-            ],
           },
-        });
+          select: { vehicleId: true, startDate: true, endDate: true },
+        })
+      : [];
 
-        return {
-          id: pr.id,
-          startDate: pr.startDate,
-          endDate: pr.endDate,
-          pickupTime: pr.pickupTime,
-          returnTime: pr.returnTime,
-          totalAmount: pr.totalAmount,
-          withDelivery: pr.withDelivery,
-          deliveryAddress: pr.deliveryAddress,
-          createdAt: pr.createdAt,
-          reminderSentAt: pr.reminderSentAt,
-          isAvailable: conflictingBookings.length === 0,
-          vehicle: {
-            id: pr.vehicle.id,
-            make: pr.vehicle.make,
-            model: pr.vehicle.model,
-            year: pr.vehicle.year,
-            city: pr.vehicle.city,
-            state: pr.vehicle.state,
-            image: pr.vehicle.images[0]?.url || null,
-            host: pr.vehicle.host,
-          },
-        };
-      })
-    );
+    const reservationsWithAvailability = pendingReservations.map((pr) => {
+      // Check if any conflicting booking overlaps with this reservation
+      const hasConflict = allConflictingBookings.some(
+        (b) =>
+          b.vehicleId === pr.vehicleId &&
+          b.startDate < pr.endDate &&
+          b.endDate > pr.startDate
+      );
+
+      return {
+        id: pr.id,
+        startDate: pr.startDate,
+        endDate: pr.endDate,
+        pickupTime: pr.pickupTime,
+        returnTime: pr.returnTime,
+        totalAmount: pr.totalAmount,
+        withDelivery: pr.withDelivery,
+        deliveryAddress: pr.deliveryAddress,
+        createdAt: pr.createdAt,
+        reminderSentAt: pr.reminderSentAt,
+        isAvailable: !hasConflict,
+        vehicle: {
+          id: pr.vehicle.id,
+          make: pr.vehicle.make,
+          model: pr.vehicle.model,
+          year: pr.vehicle.year,
+          city: pr.vehicle.city,
+          state: pr.vehicle.state,
+          image: pr.vehicle.images[0]?.url || null,
+          host: pr.vehicle.host,
+        },
+      };
+    });
 
     return NextResponse.json({
       pendingReservations: reservationsWithAvailability,

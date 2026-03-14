@@ -6,17 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   ChevronLeft,
-  ChevronRight,
   MapPin,
-  Calendar,
   Users,
   Fuel,
   Gauge,
   Star,
-  Heart,
-  Share2,
   Shield,
-  Clock,
   CheckCircle,
   MessageCircle,
 } from "lucide-react";
@@ -25,6 +20,8 @@ import { formatPrice } from "@/lib/utils";
 import { FUEL_TYPE_LABELS, TRANSMISSION_LABELS, VEHICLE_FEATURES } from "@/constants";
 import { BookingCard } from "./booking-card";
 import { ImageGallery } from "./image-gallery";
+import { LocationMapClient } from "./location-map";
+import { PaginatedReviews, type ReviewData } from "@/components/reviews/paginated-reviews";
 
 // Types
 interface VehiclePageProps {
@@ -152,7 +149,6 @@ async function getVehicle(id: string): Promise<VehicleData | null> {
             },
           },
         },
-        take: 10,
         orderBy: { createdAt: "desc" },
       },
       _count: {
@@ -393,8 +389,8 @@ function HostCard({ host }: { host: VehicleData["host"] }) {
             <MessageCircle className="mr-2 h-4 w-4" />
             Contactar
           </Button>
-          <Button variant="outline" className="w-full">
-            Ver perfil
+          <Button variant="outline" className="w-full" asChild>
+            <Link href={`/host/${host.id}`}>Ver perfil</Link>
           </Button>
         </div>
       </CardContent>
@@ -402,92 +398,40 @@ function HostCard({ host }: { host: VehicleData["host"] }) {
   );
 }
 
-function ReviewsSection({ reviews, rating }: { reviews: VehicleData["reviews"]; rating: number | null }) {
-  if (reviews.length === 0) {
-    return null;
-  }
+function VehicleReviews({ reviews, rating }: { reviews: VehicleData["reviews"]; rating: number | null }) {
+  const reviewData: ReviewData[] = reviews.map((r) => ({
+    id: r.id,
+    rating: r.rating,
+    comment: r.comment,
+    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
+    author: r.author,
+    authorAvatar: r.authorAvatar,
+  }));
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">
-          Reseñas ({reviews.length})
-        </h2>
-        {rating && (
-          <div className="flex items-center gap-1">
-            <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-            <span className="font-semibold">{rating}</span>
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        {reviews.slice(0, 5).map((review) => (
-          <Card key={review.id}>
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage src={review.authorAvatar || ""} />
-                    <AvatarFallback>{review.author.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{review.author}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(review.createdAt).toLocaleDateString("es-UY", {
-                        year: "numeric",
-                        month: "long",
-                      })}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`h-4 w-4 ${
-                        i < review.rating
-                          ? "fill-yellow-400 text-yellow-400"
-                          : "text-muted"
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-              {review.comment && (
-                <p className="mt-3 text-muted-foreground">{review.comment}</p>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {reviews.length > 5 && (
-        <Button variant="outline" className="w-full">
-          Ver todas las reseñas
-        </Button>
-      )}
-    </div>
-  );
+  return <PaginatedReviews reviews={reviewData} rating={rating} />;
 }
 
 function LocationMap({ vehicle }: { vehicle: VehicleData }) {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">Ubicación</h2>
-      <div className="aspect-[2/1] overflow-hidden rounded-xl bg-muted">
-        <div className="flex h-full items-center justify-center">
+      {vehicle.location.lat && vehicle.location.lng ? (
+        <LocationMapClient
+          lat={vehicle.location.lat}
+          lng={vehicle.location.lng}
+          city={vehicle.city}
+        />
+      ) : (
+        <div className="aspect-[2/1] overflow-hidden rounded-xl bg-muted flex items-center justify-center">
           <div className="text-center">
             <MapPin className="mx-auto h-8 w-8 text-muted-foreground" />
-            <p className="mt-2 text-sm text-muted-foreground">
-              {vehicle.location.address || vehicle.city}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Ubicación exacta tras confirmar reserva
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">{vehicle.city}</p>
           </div>
         </div>
-      </div>
+      )}
+      <p className="text-xs text-muted-foreground">
+        La ubicación exacta se compartirá al confirmar la reserva
+      </p>
     </div>
   );
 }
@@ -522,7 +466,7 @@ export default async function VehiclePage({ params }: VehiclePageProps) {
             <ImageGallery images={vehicle.images} vehicleName={`${vehicle.make} ${vehicle.model}`} />
             <VehicleInfo vehicle={vehicle} />
             <LocationMap vehicle={vehicle} />
-            <ReviewsSection reviews={vehicle.reviews} rating={vehicle.rating} />
+            <VehicleReviews reviews={vehicle.reviews} rating={vehicle.rating} />
           </div>
 
           {/* Sidebar */}

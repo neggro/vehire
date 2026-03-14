@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight, Heart, Share2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
-interface Image {
+interface ImageData {
   id: string;
   url: string;
   order: number;
@@ -13,23 +13,50 @@ interface Image {
 }
 
 interface ImageGalleryProps {
-  images: Image[];
+  images: ImageData[];
   vehicleName: string;
 }
 
 export function ImageGallery({ images, vehicleName }: ImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
   const { toast } = useToast();
+
+  // Touch swipe handling
+  const touchStartX = useRef<number | null>(null);
+  const touchDeltaX = useRef(0);
 
   const hasImages = images.length > 0;
   const currentImage = hasImages ? images[currentIndex] : null;
 
-  const goToPrevious = () => {
+  const goToPrevious = useCallback(() => {
     setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  }, [images.length]);
+
+  const goToNext = useCallback(() => {
+    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  }, [images.length]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchDeltaX.current = 0;
   };
 
-  const goToNext = () => {
-    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartX.current === null) return;
+    const threshold = 50;
+    if (touchDeltaX.current > threshold) {
+      goToPrevious();
+    } else if (touchDeltaX.current < -threshold) {
+      goToNext();
+    }
+    touchStartX.current = null;
+    touchDeltaX.current = 0;
   };
 
   const handleShare = async () => {
@@ -39,7 +66,6 @@ export function ImageGallery({ images, vehicleName }: ImageGalleryProps) {
         url: window.location.href,
       });
     } catch {
-      // User cancelled or share not supported
       await navigator.clipboard.writeText(window.location.href);
       toast({
         title: "Enlace copiado",
@@ -56,12 +82,22 @@ export function ImageGallery({ images, vehicleName }: ImageGalleryProps) {
   };
 
   return (
-    <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-muted">
+    <div
+      className="relative aspect-[16/10] overflow-hidden rounded-xl bg-muted group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {hasImages && currentImage ? (
-        <img
+        <Image
           src={currentImage.url}
           alt={`${vehicleName} - Imagen ${currentIndex + 1}`}
-          className="h-full w-full object-cover"
+          fill
+          className="object-cover"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1000px"
+          priority={currentIndex === 0}
         />
       ) : (
         <div className="absolute inset-0 flex items-center justify-center">
@@ -69,7 +105,7 @@ export function ImageGallery({ images, vehicleName }: ImageGalleryProps) {
         </div>
       )}
 
-      {/* Navigation arrows - only show if multiple images */}
+      {/* Navigation arrows */}
       {images.length > 1 && (
         <>
           <button
@@ -96,23 +132,32 @@ export function ImageGallery({ images, vehicleName }: ImageGalleryProps) {
         </div>
       )}
 
-      {/* Thumbnail strip for multiple images */}
+      {/* Thumbnail strip — desktop only, visible on hover */}
       {images.length > 1 && (
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-2">
+        <div
+          className={`
+            absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-2
+            hidden md:flex
+            transition-opacity duration-200
+            ${isHovered ? "opacity-100" : "opacity-0"}
+          `}
+        >
           {images.slice(0, 5).map((image, index) => (
             <button
               key={image.id}
               onClick={() => setCurrentIndex(index)}
-              className={`h-12 w-12 rounded-md overflow-hidden border-2 transition-colors ${
+              className={`relative h-12 w-12 rounded-md overflow-hidden border-2 transition-colors ${
                 index === currentIndex
                   ? "border-primary"
                   : "border-transparent hover:border-white/50"
               }`}
             >
-              <img
+              <Image
                 src={image.url}
                 alt={`Miniatura ${index + 1}`}
-                className="h-full w-full object-cover"
+                fill
+                className="object-cover"
+                sizes="48px"
               />
             </button>
           ))}

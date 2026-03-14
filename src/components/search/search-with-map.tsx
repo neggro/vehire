@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -15,54 +13,26 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Search,
-  MapPin,
-  Users,
-  Fuel,
-  Gauge,
   Car,
   SlidersHorizontal,
   Grid3X3,
   List,
   Map,
-  Star,
-  Heart,
   X,
   Loader2,
 } from "lucide-react";
-import {
-  FUEL_TYPE_LABELS,
-  TRANSMISSION_LABELS,
-} from "@/constants";
-import { formatPrice } from "@/lib/utils";
 import { VehicleMap } from "@/components/map/vehicle-map";
 import { PlacesAutocomplete } from "./places-autocomplete";
 import { DateRangeWithTime } from "./date-range-picker";
-
-interface Vehicle {
-  id: string;
-  make: string;
-  model: string;
-  year: number;
-  city: string;
-  state: string | null;
-  basePriceDay: number;
-  weekendPriceDay: number | null;
-  images: { url: string }[];
-  features: string[];
-  seats: number;
-  transmission: string;
-  fuelType: string;
-  rating: number | null;
-  reviewCount: number;
-  host: {
-    id: string;
-    fullName: string;
-  };
-}
+import {
+  VehicleCard,
+  VehicleListItem,
+  VehicleMapCard,
+  type VehicleCardData,
+} from "./vehicle-cards";
 
 interface SearchResponse {
-  vehicles: Vehicle[];
+  vehicles: VehicleCardData[];
   pagination: {
     page: number;
     limit: number;
@@ -73,284 +43,6 @@ interface SearchResponse {
 }
 
 type ViewMode = "grid" | "list" | "map";
-
-// -- Vehicle image placeholder --
-function VehicleImagePlaceholder({ className = "" }: { className?: string }) {
-  return (
-    <div className={`flex items-center justify-center bg-gradient-to-br from-primary/5 to-muted ${className}`}>
-      <Car className="h-10 w-10 text-muted-foreground/30" />
-    </div>
-  );
-}
-
-// -- Rating pill --
-function RatingPill({ rating }: { rating: number }) {
-  return (
-    <div className="flex items-center gap-1 bg-[hsl(var(--gold))]/10 px-2 py-0.5 rounded-full">
-      <Star className="h-3.5 w-3.5 fill-[hsl(var(--gold))] text-[hsl(var(--gold))]" />
-      <span className="text-sm font-semibold">{rating.toFixed(1)}</span>
-    </div>
-  );
-}
-
-// -- Favorite button --
-function FavoriteButton({ className = "" }: { className?: string }) {
-  return (
-    <button
-      className={`rounded-full bg-white/90 dark:bg-background/90 p-2 hover:bg-white dark:hover:bg-background shadow-sm hover:shadow-md hover:scale-110 transition-all duration-200 ${className}`}
-      onClick={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}
-    >
-      <Heart className="h-4 w-4" />
-    </button>
-  );
-}
-
-// -- Specs row --
-function VehicleSpecs({ vehicle, size = "sm" }: { vehicle: Vehicle; size?: "sm" | "md" }) {
-  const iconSize = size === "md" ? "h-4 w-4" : "h-3.5 w-3.5";
-  return (
-    <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-      <span className="flex items-center gap-1">
-        <Users className={iconSize} />
-        {vehicle.seats}
-      </span>
-      <span className="flex items-center gap-1">
-        <Gauge className={iconSize} />
-        {TRANSMISSION_LABELS[vehicle.transmission as keyof typeof TRANSMISSION_LABELS] || vehicle.transmission}
-      </span>
-      <span className="flex items-center gap-1">
-        <Fuel className={iconSize} />
-        {FUEL_TYPE_LABELS[vehicle.fuelType as keyof typeof FUEL_TYPE_LABELS] || vehicle.fuelType}
-      </span>
-    </div>
-  );
-}
-
-// =============================================
-// GRID CARD — vertical, used in grid view
-// =============================================
-function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
-  return (
-    <Card className="group overflow-hidden border-border/40 card-hover">
-      <Link href={`/vehicle/${vehicle.id}`}>
-        <div className="relative aspect-[4/3] bg-muted overflow-hidden">
-          {vehicle.images?.[0]?.url ? (
-            <img
-              src={vehicle.images[0].url}
-              alt={`${vehicle.make} ${vehicle.model}`}
-              className="w-full h-full object-cover img-zoom"
-            />
-          ) : (
-            <VehicleImagePlaceholder className="absolute inset-0" />
-          )}
-          <FavoriteButton className="absolute top-3 right-3" />
-          <Badge className="absolute bottom-3 left-3" variant="secondary">
-            {vehicle.city}
-          </Badge>
-        </div>
-      </Link>
-      <CardContent className="p-5">
-        <Link href={`/vehicle/${vehicle.id}`}>
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h3 className="font-semibold font-display">
-                {vehicle.make} {vehicle.model}
-              </h3>
-              <p className="text-sm text-muted-foreground">{vehicle.year}</p>
-            </div>
-            {vehicle.rating !== null && <RatingPill rating={vehicle.rating} />}
-          </div>
-
-          <div className="mt-3">
-            <VehicleSpecs vehicle={vehicle} />
-          </div>
-
-          <div className="mt-4 flex items-center justify-between pt-3 border-t border-border/40">
-            <div>
-              <span className="text-lg font-bold font-display">
-                {formatPrice(vehicle.basePriceDay)}
-              </span>
-              <span className="text-sm text-muted-foreground">/día</span>
-            </div>
-            <Button size="sm" className="rounded-lg shadow-sm">
-              Ver más
-            </Button>
-          </div>
-        </Link>
-      </CardContent>
-    </Card>
-  );
-}
-
-// =============================================
-// LIST ITEM — horizontal card for list view
-// =============================================
-function VehicleListItem({
-  vehicle,
-  isSelected,
-  onHover,
-}: {
-  vehicle: Vehicle;
-  isSelected?: boolean;
-  onHover?: (id: string | null) => void;
-}) {
-  return (
-    <Card
-      className={`group overflow-hidden border-border/40 transition-all duration-200 hover:shadow-lg ${
-        isSelected ? "ring-2 ring-primary shadow-lg" : ""
-      }`}
-      onMouseEnter={() => onHover?.(vehicle.id)}
-      onMouseLeave={() => onHover?.(null)}
-    >
-      <Link href={`/vehicle/${vehicle.id}`}>
-        <div className="flex flex-col sm:flex-row">
-          {/* Image — left side */}
-          <div className="relative w-full sm:w-72 md:w-80 shrink-0 aspect-[4/3] sm:aspect-auto sm:h-auto bg-muted overflow-hidden">
-            {vehicle.images?.[0]?.url ? (
-              <img
-                src={vehicle.images[0].url}
-                alt={`${vehicle.make} ${vehicle.model}`}
-                className="w-full h-full object-cover img-zoom sm:absolute sm:inset-0"
-              />
-            ) : (
-              <VehicleImagePlaceholder className="w-full h-full sm:absolute sm:inset-0" />
-            )}
-            <FavoriteButton className="absolute top-3 right-3" />
-            <Badge className="absolute bottom-3 left-3 sm:top-3 sm:bottom-auto" variant="secondary">
-              <MapPin className="h-3 w-3 mr-1" />
-              {vehicle.city}
-            </Badge>
-          </div>
-
-          {/* Content — right side */}
-          <div className="flex-1 p-5 sm:p-6 flex flex-col justify-between min-h-[160px]">
-            <div>
-              {/* Header row */}
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-semibold font-display">
-                    {vehicle.make} {vehicle.model}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">{vehicle.year}</p>
-                </div>
-                {vehicle.rating !== null && <RatingPill rating={vehicle.rating} />}
-              </div>
-
-              {/* Specs */}
-              <div className="mt-3">
-                <VehicleSpecs vehicle={vehicle} size="md" />
-              </div>
-
-              {/* Host info */}
-              <p className="mt-2 text-sm text-muted-foreground">
-                Anfitrión: <span className="text-foreground font-medium">{vehicle.host.fullName}</span>
-                {vehicle.reviewCount > 0 && (
-                  <span className="ml-2">· {vehicle.reviewCount} reseña{vehicle.reviewCount !== 1 ? "s" : ""}</span>
-                )}
-              </p>
-            </div>
-
-            {/* Footer */}
-            <div className="mt-4 flex items-center justify-between pt-3 border-t border-border/40">
-              <div>
-                <span className="text-xl font-bold font-display">
-                  {formatPrice(vehicle.basePriceDay)}
-                </span>
-                <span className="text-sm text-muted-foreground">/día</span>
-              </div>
-              <Button className="rounded-lg shadow-sm px-6">
-                Ver detalle
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Link>
-    </Card>
-  );
-}
-
-// =============================================
-// MAP CARD — compact card for map sidebar
-// =============================================
-function VehicleMapCard({
-  vehicle,
-  isSelected,
-  onHover,
-}: {
-  vehicle: Vehicle;
-  isSelected?: boolean;
-  onHover?: (id: string | null) => void;
-}) {
-  return (
-    <Card
-      className={`group overflow-hidden border-border/40 transition-all duration-200 hover:shadow-md cursor-pointer ${
-        isSelected
-          ? "ring-2 ring-primary shadow-md bg-primary/[0.02]"
-          : ""
-      }`}
-      onMouseEnter={() => onHover?.(vehicle.id)}
-      onMouseLeave={() => onHover?.(null)}
-    >
-      <Link href={`/vehicle/${vehicle.id}`}>
-        <div className="flex gap-3 p-3">
-          {/* Thumbnail */}
-          <div className="relative w-28 h-20 shrink-0 rounded-lg overflow-hidden bg-muted">
-            {vehicle.images?.[0]?.url ? (
-              <img
-                src={vehicle.images[0].url}
-                alt={`${vehicle.make} ${vehicle.model}`}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <VehicleImagePlaceholder className="w-full h-full" />
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="flex-1 min-w-0 flex flex-col justify-between">
-            <div>
-              <div className="flex items-start justify-between gap-2">
-                <h4 className="font-semibold font-display text-sm truncate">
-                  {vehicle.make} {vehicle.model}
-                </h4>
-                {vehicle.rating !== null && (
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <Star className="h-3 w-3 fill-[hsl(var(--gold))] text-[hsl(var(--gold))]" />
-                    <span className="text-xs font-semibold">{vehicle.rating.toFixed(1)}</span>
-                  </div>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {vehicle.year} · {vehicle.city}
-              </p>
-            </div>
-            <div className="flex items-center justify-between mt-1.5">
-              <div>
-                <span className="text-sm font-bold font-display">
-                  {formatPrice(vehicle.basePriceDay)}
-                </span>
-                <span className="text-xs text-muted-foreground">/día</span>
-              </div>
-              <div className="flex gap-2 text-xs text-muted-foreground">
-                <span className="flex items-center gap-0.5">
-                  <Users className="h-3 w-3" />
-                  {vehicle.seats}
-                </span>
-                <span className="flex items-center gap-0.5">
-                  <Gauge className="h-3 w-3" />
-                  {TRANSMISSION_LABELS[vehicle.transmission as keyof typeof TRANSMISSION_LABELS]?.substring(0, 4) || vehicle.transmission.substring(0, 4)}.
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Link>
-    </Card>
-  );
-}
 
 interface SearchFiltersProps {
   filters: {
@@ -494,7 +186,7 @@ export default function SearchWithMap() {
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicles, setVehicles] = useState<VehicleCardData[]>([]);
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 12,
@@ -532,9 +224,7 @@ export default function SearchWithMap() {
     };
   });
 
-  // Track last-searched values to prevent redundant searches
-  const lastSearchedRef = useRef<string>("");
-
+  // Search key for deduplication
   const currentSearchKey = useMemo(() => {
     return JSON.stringify({
       city: filters.city,
@@ -547,15 +237,15 @@ export default function SearchWithMap() {
       endDate: dateRange.endDate?.toISOString() || "",
       startTime: dateRange.startTime,
       endTime: dateRange.endTime,
+      sortBy,
     });
-  }, [filters, dateRange]);
+  }, [filters, dateRange, sortBy]);
 
-  const hasChanges = currentSearchKey !== lastSearchedRef.current;
+  const lastSearchedRef = useRef<string>("");
 
   // Search function
-  const searchVehicles = useCallback(async (page = 1, snapshot?: string) => {
+  const searchVehicles = useCallback(async (page = 1) => {
     setIsLoading(true);
-    if (snapshot) lastSearchedRef.current = snapshot;
     try {
       const params = new URLSearchParams();
 
@@ -603,39 +293,26 @@ export default function SearchWithMap() {
     }
   }, [filters, dateRange, sortBy]);
 
-  // Initial search on mount
-  const initialSearchDone = useRef(false);
+  // Auto-search with debounce when any filter/date/sort changes
   useEffect(() => {
-    if (!initialSearchDone.current) {
-      initialSearchDone.current = true;
+    if (currentSearchKey === lastSearchedRef.current) return;
+
+    const timeout = setTimeout(() => {
       lastSearchedRef.current = currentSearchKey;
-      searchVehicles(1, currentSearchKey);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      searchVehicles(1);
 
-  // Re-search when sort changes
-  useEffect(() => {
-    if (initialSearchDone.current) {
-      searchVehicles(1, currentSearchKey);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy]);
+      // Update URL
+      const params = new URLSearchParams();
+      if (filters.city) params.set("city", filters.city);
+      if (dateRange.startDate) params.set("startDate", dateRange.startDate.toISOString());
+      if (dateRange.endDate) params.set("endDate", dateRange.endDate.toISOString());
+      if (dateRange.startTime) params.set("startTime", dateRange.startTime);
+      if (dateRange.endTime) params.set("endTime", dateRange.endTime);
+      router.push(`/search?${params.toString()}`, { scroll: false });
+    }, 400);
 
-  // Update URL with filters
-  const updateUrl = useCallback(() => {
-    const params = new URLSearchParams();
-    if (filters.city) params.set("city", filters.city);
-    if (dateRange.startDate) {
-      params.set("startDate", dateRange.startDate.toISOString());
-    }
-    if (dateRange.endDate) {
-      params.set("endDate", dateRange.endDate.toISOString());
-    }
-    if (dateRange.startTime) params.set("startTime", dateRange.startTime);
-    if (dateRange.endTime) params.set("endTime", dateRange.endTime);
-    router.push(`/search?${params.toString()}`, { scroll: false });
-  }, [filters.city, dateRange, router]);
+    return () => clearTimeout(timeout);
+  }, [currentSearchKey, searchVehicles, filters.city, dateRange, router]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -651,9 +328,6 @@ export default function SearchWithMap() {
   };
 
   const handleApplyFilters = () => {
-    if (!hasChanges && !isLoading) return;
-    updateUrl();
-    searchVehicles(1, currentSearchKey);
     setShowMobileFilters(false);
   };
 
@@ -675,11 +349,29 @@ export default function SearchWithMap() {
     router.push("/search", { scroll: false });
   };
 
-  const handleLoadMore = () => {
-    if (pagination.hasMore) {
-      searchVehicles(pagination.page + 1);
-    }
-  };
+  // Infinite scroll
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const isLoadingMore = useRef(false);
+
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && pagination.hasMore && !isLoading && !isLoadingMore.current) {
+          isLoadingMore.current = true;
+          searchVehicles(pagination.page + 1).finally(() => {
+            isLoadingMore.current = false;
+          });
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [pagination.hasMore, pagination.page, isLoading, searchVehicles]);
 
   const handleMarkerClick = (vehicleId: string) => {
     setSelectedVehicleId(vehicleId);
@@ -724,24 +416,9 @@ export default function SearchWithMap() {
               />
             </div>
 
-            {/* Search Button */}
-            <Button
-              onClick={handleApplyFilters}
-              disabled={isLoading || !hasChanges}
-              className="rounded-full h-12 min-w-[130px] px-6 ml-1 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  <span className="font-semibold">Buscando</span>
-                </>
-              ) : (
-                <>
-                  <Search className="h-5 w-5 mr-2" />
-                  <span className="font-semibold">Buscar</span>
-                </>
-              )}
-            </Button>
+            {isLoading && (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mr-2 shrink-0" />
+            )}
           </div>
 
           {/* Mobile Layout */}
@@ -763,29 +440,16 @@ export default function SearchWithMap() {
                 <SlidersHorizontal className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <DateRangeWithTime
-                startDate={dateRange.startDate}
-                endDate={dateRange.endDate}
-                startTime={dateRange.startTime}
-                endTime={dateRange.endTime}
-                onChange={handleDateRangeChange}
-                placeholder="Fechas"
-                compact
-                className="flex-1 h-11 rounded-xl"
-              />
-              <Button
-                onClick={handleApplyFilters}
-                disabled={isLoading || !hasChanges}
-                className="shrink-0 h-11 min-w-[52px] px-4 rounded-xl"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Search className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
+            <DateRangeWithTime
+              startDate={dateRange.startDate}
+              endDate={dateRange.endDate}
+              startTime={dateRange.startTime}
+              endTime={dateRange.endTime}
+              onChange={handleDateRangeChange}
+              placeholder="Fechas"
+              compact
+              className="w-full h-11 rounded-xl"
+            />
           </div>
         </div>
       </div>
@@ -850,7 +514,7 @@ export default function SearchWithMap() {
                   <Button
                     variant={viewMode === "list" ? "secondary" : "ghost"}
                     size="icon"
-                    className="rounded-none"
+                    className="hidden sm:inline-flex rounded-none"
                     onClick={() => setViewMode("list")}
                   >
                     <List className="h-4 w-4" />
@@ -869,8 +533,29 @@ export default function SearchWithMap() {
 
             {/* Loading State */}
             {isLoading && vehicles.length === 0 && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 py-6">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border bg-card overflow-hidden">
+                    <div className="aspect-[16/10] bg-muted animate-pulse" />
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-2">
+                          <div className="h-5 w-36 bg-muted animate-pulse rounded" />
+                          <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                        </div>
+                        <div className="h-4 w-12 bg-muted animate-pulse rounded" />
+                      </div>
+                      <div className="flex gap-2">
+                        <div className="h-6 w-20 bg-muted animate-pulse rounded-full" />
+                        <div className="h-6 w-16 bg-muted animate-pulse rounded-full" />
+                      </div>
+                      <div className="flex items-center justify-between pt-2">
+                        <div className="h-6 w-24 bg-muted animate-pulse rounded" />
+                        <div className="h-4 w-16 bg-muted animate-pulse rounded" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -964,20 +649,10 @@ export default function SearchWithMap() {
               </div>
             )}
 
-            {/* Load More */}
+            {/* Infinite scroll sentinel */}
             {viewMode !== "map" && pagination.hasMore && (
-              <div className="mt-8 text-center">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={handleLoadMore}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  Cargar más resultados
-                </Button>
+              <div ref={loadMoreRef} className="mt-8 flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             )}
           </main>

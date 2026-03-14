@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { mapPayPalStatus } from "@/lib/paypal";
+import { mapPayPalStatus, verifyWebhookSignature } from "@/lib/paypal";
 
 /**
  * POST /api/webhooks/paypal
@@ -9,6 +9,23 @@ import { mapPayPalStatus } from "@/lib/paypal";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
+
+    // Verify webhook signature
+    const isValid = await verifyWebhookSignature({
+      authAlgo: request.headers.get("paypal-auth-algo") || "",
+      certUrl: request.headers.get("paypal-cert-url") || "",
+      transmissionId: request.headers.get("paypal-transmission-id") || "",
+      transmissionSig: request.headers.get("paypal-transmission-sig") || "",
+      transmissionTime: request.headers.get("paypal-transmission-time") || "",
+      webhookId: process.env.PAYPAL_WEBHOOK_ID || "",
+      body,
+    });
+
+    if (!isValid) {
+      console.warn("PayPal webhook signature verification failed");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
+
     const event = JSON.parse(body);
 
     console.log("PayPal webhook received:", event.event_type, event.resource?.id);
