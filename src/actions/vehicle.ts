@@ -68,7 +68,7 @@ export async function createVehicle(
 
     // If not a host yet, add HOST role
     if (!hasHostRole) {
-      const currentRoles = userData?.roles || ["USER", "DRIVER"];
+      const currentRoles = userData?.roles || ["DRIVER"];
       await prisma.user.update({
         where: { id: user.id },
         data: { roles: [...currentRoles, "HOST"] },

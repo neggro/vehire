@@ -250,7 +250,7 @@ export interface Database {
       [_ in never]: never;
     };
     Enums: {
-      user_role: "USER" | "HOST" | "DRIVER" | "ADMIN";
+      user_role: "HOST" | "DRIVER" | "ADMIN";
       kyc_status: "PENDING" | "VERIFIED" | "REJECTED";
       vehicle_status: "DRAFT" | "PENDING_APPROVAL" | "ACTIVE" | "PAUSED" | "REJECTED";
       booking_status: "PENDING" | "CONFIRMED" | "ACTIVE" | "COMPLETED" | "CANCELLED";

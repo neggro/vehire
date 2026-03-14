@@ -12,7 +12,7 @@
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'UserRole') THEN
-    CREATE TYPE "UserRole" AS ENUM ('USER', 'HOST', 'DRIVER', 'ADMIN');
+    CREATE TYPE "UserRole" AS ENUM ('HOST', 'DRIVER', 'ADMIN');
   END IF;
 END
 $$;
@@ -29,7 +29,7 @@ BEGIN
     NEW.id::text,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
-    ARRAY['USER'::"UserRole", 'DRIVER'::"UserRole"],
+    ARRAY['DRIVER'::"UserRole"],
     'PENDING'::"KYCStatus",
     NOW(),
     NOW()
@@ -59,7 +59,7 @@ SELECT
   u.id::text,
   u.email,
   COALESCE(u.raw_user_meta_data->>'full_name', u.raw_user_meta_data->>'name', split_part(u.email, '@', 1)),
-  ARRAY['USER'::"UserRole", 'DRIVER'::"UserRole"],
+  ARRAY['DRIVER'::"UserRole"],
   'PENDING'::"KYCStatus",
   NOW(),
   NOW()

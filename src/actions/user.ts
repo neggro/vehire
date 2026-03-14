@@ -38,7 +38,7 @@ export async function becomeHost(): Promise<BecomeHostResult> {
           id: user.id,
           email: user.email!,
           fullName,
-          roles: ["USER", "DRIVER", "HOST"],
+          roles: ["DRIVER", "HOST"],
           kycStatus: "PENDING",
         },
       });
@@ -100,7 +100,7 @@ export async function ensureUserExists(): Promise<{ success: boolean; userId?: s
         id: user.id,
         email: user.email!,
         fullName,
-        roles: ["USER", "DRIVER"],
+        roles: ["DRIVER"],
         kycStatus: "PENDING",
       },
     });

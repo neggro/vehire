@@ -119,8 +119,7 @@ export default function AdminUsersPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los roles</SelectItem>
-                <SelectItem value="USER">Usuario</SelectItem>
-                <SelectItem value="HOST">Anfitrion</SelectItem>
+                <SelectItem value="HOST">Anfitrión</SelectItem>
                 <SelectItem value="DRIVER">Conductor</SelectItem>
                 <SelectItem value="ADMIN">Administrador</SelectItem>
               </SelectContent>

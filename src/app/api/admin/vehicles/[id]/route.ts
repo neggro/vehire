@@ -44,21 +44,36 @@ export async function GET(
     );
   }
 
-  // Fetch reviews for this vehicle
-  const reviews = await prisma.review.findMany({
-    where: { vehicleId: id },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-    select: {
-      id: true,
-      rating: true,
-      comment: true,
-      createdAt: true,
-      reviewer: { select: { id: true, fullName: true } },
-    },
-  });
+  // Fetch reviews and recent bookings for this vehicle
+  const [reviews, bookings] = await Promise.all([
+    prisma.review.findMany({
+      where: { vehicleId: id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        createdAt: true,
+        reviewer: { select: { id: true, fullName: true } },
+      },
+    }),
+    prisma.booking.findMany({
+      where: { vehicleId: id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        startDate: true,
+        endDate: true,
+        totalAmount: true,
+        status: true,
+        driver: { select: { id: true, fullName: true } },
+      },
+    }),
+  ]);
 
-  return NextResponse.json({ ...vehicle, reviews });
+  return NextResponse.json({ ...vehicle, reviews, bookings });
 }
 
 export async function PATCH(

@@ -14,7 +14,7 @@ model User {
   phone                String?
   fullName             String
   avatarUrl            String?
-  roles                UserRole[]          @default([USER, DRIVER])
+  roles                UserRole[]          @default([DRIVER])
   adminPermissions     String[]            @default([])
   kycStatus            KYCStatus           @default(PENDING)
   createdAt            DateTime            @default(now())
@@ -353,7 +353,6 @@ model Favorite {
 }
 
 enum UserRole {
-  USER
   HOST
   DRIVER
   ADMIN

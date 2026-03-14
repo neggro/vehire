@@ -36,7 +36,7 @@ export async function GET(request: Request) {
               email: user.email!,
               fullName,
               avatarUrl: user.user_metadata?.avatar_url || null,
-              roles: ["USER", "DRIVER"],
+              roles: ["DRIVER"],
               kycStatus: "PENDING",
             },
           });

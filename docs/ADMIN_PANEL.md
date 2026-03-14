@@ -138,7 +138,7 @@ Vía Prisma directamente:
 await prisma.user.update({
   where: { id: "..." },
   data: {
-    roles: ["USER", "DRIVER", "ADMIN"],
+    roles: ["DRIVER", "ADMIN"],
     adminPermissions: ["admin:full"],
   },
 });
@@ -177,7 +177,7 @@ await prisma.user.update({
 - **API**: `GET/PATCH /api/admin/users/[id]`
 - **Funcionalidad**:
   - Perfil completo: avatar, nombre, email, teléfono, fecha de registro
-  - Edición de roles (checkboxes: USER, HOST, DRIVER, ADMIN)
+  - Edición de roles (checkboxes: HOST, DRIVER, ADMIN)
   - Edición de permisos admin (aparece cuando se activa rol ADMIN)
   - Cambio de KYC status
   - Lista de documentos KYC del usuario
@@ -397,7 +397,7 @@ src/
 ### Ejemplo: Admin solo de vehículos y KYC
 
 ```
-roles: [USER, DRIVER, ADMIN]
+roles: [DRIVER, ADMIN]
 adminPermissions: ["admin:vehicles", "admin:kyc"]
 ```
 

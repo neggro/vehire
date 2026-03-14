@@ -291,9 +291,7 @@ async function HostSettingsContent() {
                 <div className="flex gap-1">
                   {profile.roles.map((role) => (
                     <Badge key={role} variant="outline" className="text-xs">
-                      {role === "USER"
-                        ? "Usuario"
-                        : role === "DRIVER"
+                      {role === "DRIVER"
                         ? "Conductor"
                         : role === "HOST"
                         ? "Anfitrión"

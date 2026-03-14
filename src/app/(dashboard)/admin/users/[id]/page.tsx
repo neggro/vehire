@@ -91,7 +91,7 @@ const statusColor: Record<string, "default" | "success" | "warning" | "destructi
   CANCELLED: "destructive",
 };
 
-const allRoles = ["USER", "HOST", "DRIVER", "ADMIN"] as const;
+const allRoles = ["HOST", "DRIVER", "ADMIN"] as const;
 const editablePermissions = Object.entries(ADMIN_PERMISSIONS).filter(
   ([key]) => key !== "FULL"
 );

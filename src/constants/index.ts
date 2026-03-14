@@ -131,14 +131,12 @@ export const PAYMENT_STATUS = {
 
 // User roles
 export const USER_ROLES = {
-  USER: "USER",
   HOST: "HOST",
   DRIVER: "DRIVER",
   ADMIN: "ADMIN",
 } as const;
 
 export const USER_ROLE_LABELS: Record<string, string> = {
-  [USER_ROLES.USER]: "Usuario",
   [USER_ROLES.HOST]: "Anfitrión",
   [USER_ROLES.DRIVER]: "Conductor",
   [USER_ROLES.ADMIN]: "Administrador",
