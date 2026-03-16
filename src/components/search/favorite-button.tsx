@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { Heart } from "lucide-react";
 import { toggleFavorite } from "@/actions/favorites";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 
 export function FavoriteButton({
   vehicleId,
@@ -19,6 +20,7 @@ export function FavoriteButton({
   const [isFavorite, setIsFavorite] = useState(initialFavorite);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
+  const t = useTranslations("vehicle.gallery");
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -46,7 +48,7 @@ export function FavoriteButton({
       className={`rounded-full bg-white/90 dark:bg-background/90 p-2 hover:bg-white dark:hover:bg-background shadow-sm hover:shadow-md hover:scale-110 transition-all duration-200 ${className}`}
       onClick={handleClick}
       disabled={isPending}
-      aria-label={isFavorite ? "Quitar de favoritos" : "Agregar a favoritos"}
+      aria-label={isFavorite ? t("removeFavorite") : t("addFavorite")}
     >
       <Heart
         className={`h-4 w-4 transition-colors ${

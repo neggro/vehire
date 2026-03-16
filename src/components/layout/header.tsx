@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,14 +10,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 import { Logo } from "@/components/layout/logo";
-import { Menu, Plus, User, Heart, MessageSquare, Car, LayoutDashboard, LogOut } from "lucide-react";
+import { Plus, User, Heart, MessageSquare, Car, LayoutDashboard, LogOut } from "lucide-react";
 import { createClient as getServerClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { MobileNav } from "./mobile-nav";
 import { HeaderWrapper } from "./header-wrapper";
+import { getTranslations } from "next-intl/server";
 
 export async function Header() {
+  const t = await getTranslations("common");
   const supabase = await getServerClient();
   const {
     data: { user },
@@ -45,14 +48,14 @@ export async function Header() {
             href="/search"
             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/60 transition-colors"
           >
-            Buscar vehículos
+            {t("nav.searchVehicles")}
           </Link>
           {user && isHost && (
             <Link
               href="/host/vehicles"
               className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/60 transition-colors"
             >
-              Mis vehículos
+              {t("nav.myVehicles")}
             </Link>
           )}
           {user && (
@@ -60,13 +63,14 @@ export async function Header() {
               href="/dashboard"
               className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/60 transition-colors"
             >
-              Mis reservas
+              {t("nav.myBookings")}
             </Link>
           )}
         </nav>
 
         {/* Actions */}
         <div className="flex items-center gap-2">
+          <LanguageSwitcher />
           <ThemeToggle />
 
           {user ? (
@@ -75,7 +79,7 @@ export async function Header() {
                 <Button asChild size="sm" className="hidden sm:flex gap-1.5 rounded-lg shadow-sm">
                   <Link href="/host/vehicles/new">
                     <Plus className="h-4 w-4" />
-                    Publicar
+                    {t("nav.publish")}
                   </Link>
                 </Button>
               )}
@@ -103,52 +107,52 @@ export async function Header() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="py-2.5 px-4 cursor-pointer">
-                    <Link href="/dashboard">
+                  <Link href="/dashboard">
+                    <DropdownMenuItem className="py-2.5 px-4 cursor-pointer">
                       <LayoutDashboard className="mr-2.5 h-4 w-4 text-muted-foreground" />
-                      <span>Dashboard</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="py-2.5 px-4 cursor-pointer">
-                    <Link href="/dashboard/favorites">
-                      <Heart className="mr-2.5 h-4 w-4 text-muted-foreground" />
-                      <span>Favoritos</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="py-2.5 px-4 cursor-pointer">
-                    <Link href="/messages">
-                      <MessageSquare className="mr-2.5 h-4 w-4 text-muted-foreground" />
-                      <span>Mensajes</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  {isHost && (
-                    <DropdownMenuItem asChild className="py-2.5 px-4 cursor-pointer">
-                      <Link href="/host">
-                        <Car className="mr-2.5 h-4 w-4 text-muted-foreground" />
-                        <span>Panel de anfitrión</span>
-                      </Link>
+                      <span>{t("nav.dashboard")}</span>
                     </DropdownMenuItem>
+                  </Link>
+                  <Link href="/dashboard/favorites">
+                    <DropdownMenuItem className="py-2.5 px-4 cursor-pointer">
+                      <Heart className="mr-2.5 h-4 w-4 text-muted-foreground" />
+                      <span>{t("nav.favorites")}</span>
+                    </DropdownMenuItem>
+                  </Link>
+                  <Link href="/messages">
+                    <DropdownMenuItem className="py-2.5 px-4 cursor-pointer">
+                      <MessageSquare className="mr-2.5 h-4 w-4 text-muted-foreground" />
+                      <span>{t("nav.messages")}</span>
+                    </DropdownMenuItem>
+                  </Link>
+                  {isHost && (
+                    <Link href="/host">
+                      <DropdownMenuItem className="py-2.5 px-4 cursor-pointer">
+                        <Car className="mr-2.5 h-4 w-4 text-muted-foreground" />
+                        <span>{t("nav.hostPanel")}</span>
+                      </DropdownMenuItem>
+                    </Link>
                   )}
-                  <DropdownMenuItem asChild className="py-2.5 px-4 cursor-pointer">
-                    <Link href="/dashboard/settings">
+                  <Link href="/dashboard/settings">
+                    <DropdownMenuItem className="py-2.5 px-4 cursor-pointer">
                       <User className="mr-2.5 h-4 w-4 text-muted-foreground" />
-                      <span>Configuración</span>
-                    </Link>
-                  </DropdownMenuItem>
+                      <span>{t("nav.settings")}</span>
+                    </DropdownMenuItem>
+                  </Link>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="py-2.5 px-4 cursor-pointer text-destructive">
-                    <Link href="/api/auth/signout">
+                  <a href="/api/auth/signout">
+                    <DropdownMenuItem className="py-2.5 px-4 cursor-pointer text-destructive">
                       <LogOut className="mr-2.5 h-4 w-4" />
-                      <span>Cerrar sesión</span>
-                    </Link>
-                  </DropdownMenuItem>
+                      <span>{t("nav.logout")}</span>
+                    </DropdownMenuItem>
+                  </a>
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
           ) : (
             <div className="hidden md:flex items-center gap-2">
               <Button asChild className="rounded-lg shadow-sm">
-                <Link href="/login">Ingresar</Link>
+                <Link href="/login">{t("nav.login")}</Link>
               </Button>
             </div>
           )}

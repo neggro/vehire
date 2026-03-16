@@ -1,0 +1,15 @@
+{
+  "title": "Contact",
+  "subtitle": "We're here to help. Contact us through any of these channels.",
+  "email": "Email",
+  "emailDesc": "For general inquiries and support",
+  "phone": "Phone",
+  "phoneHours": "Monday to Friday, 9:00 AM to 6:00 PM",
+  "office": "Office",
+  "officeLocation": "Montevideo, Uruguay",
+  "businessHours": "Business hours",
+  "weekdayHours": "Monday to Friday: 9:00 AM - 6:00 PM",
+  "saturdayHours": "Saturdays: 10:00 AM - 2:00 PM",
+  "emergencyTitle": "Having an emergency during a rental?",
+  "emergencyText": "If you have an urgent problem during an active rental, use the messaging system within the platform to contact the host directly or report an incident from your booking page. Our support team will prioritize your case."
+}

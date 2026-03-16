@@ -1,0 +1,143 @@
+{
+  "nav": {
+    "searchVehicles": "Buscar vehículos",
+    "myVehicles": "Mis vehículos",
+    "myBookings": "Mis reservas",
+    "publish": "Publicar",
+    "favorites": "Favoritos",
+    "messages": "Mensajes",
+    "hostPanel": "Panel de anfitrión",
+    "settings": "Configuración",
+    "logout": "Cerrar sesión",
+    "login": "Ingresar",
+    "register": "Registrarse",
+    "dashboard": "Dashboard",
+    "publishVehicle": "Publicar vehículo",
+    "menu": "Menú",
+    "backToHome": "Volver al inicio",
+    "backToSearch": "Volver a búsqueda",
+    "backToDashboard": "Volver al dashboard"
+  },
+  "footer": {
+    "description": "La mejor plataforma para alquilar vehículos entre particulares en Uruguay.",
+    "explore": "Explorar",
+    "searchVehicles": "Buscar vehículos",
+    "becomeHost": "Ser anfitrión",
+    "faq": "Preguntas frecuentes",
+    "support": "Soporte",
+    "contact": "Contacto",
+    "helpCenter": "Centro de ayuda",
+    "insurance": "Seguros",
+    "safety": "Seguridad",
+    "legal": "Legal",
+    "terms": "Términos de servicio",
+    "privacy": "Privacidad",
+    "cookies": "Cookies",
+    "allRightsReserved": "Todos los derechos reservados.",
+    "madeInUruguay": "Hecho con cuidado en Uruguay"
+  },
+  "actions": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "apply": "Aplicar",
+    "clear": "Limpiar",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "viewMore": "Ver más",
+    "viewDetail": "Ver detalle",
+    "continue": "Continuar",
+    "goBack": "Volver",
+    "saveChanges": "Guardar cambios",
+    "saved": "Guardado",
+    "viewAll": "Ver todo"
+  },
+  "labels": {
+    "perDay": "/día",
+    "review": "reseña",
+    "reviews": "reseñas",
+    "seats": "asientos",
+    "host": "Anfitrión",
+    "driver": "Conductor",
+    "admin": "Administrador",
+    "verified": "Verificado",
+    "rejected": "Rechazado",
+    "pending": "Pendiente",
+    "memberSince": "Miembro desde {year}",
+    "activeVehicles": "vehículos activos",
+    "error": "Error",
+    "success": "Éxito"
+  },
+  "transmission": {
+    "manual": "Manual",
+    "automatic": "Automático"
+  },
+  "fuelType": {
+    "gasoline": "Nafta",
+    "diesel": "Diésel",
+    "electric": "Eléctrico",
+    "hybrid": "Híbrido"
+  },
+  "vehicleStatus": {
+    "DRAFT": "Borrador",
+    "PENDING_APPROVAL": "Pendiente de aprobación",
+    "ACTIVE": "Activo",
+    "PAUSED": "Pausado",
+    "REJECTED": "Rechazado"
+  },
+  "bookingStatus": {
+    "PENDING": "Pendiente de pago",
+    "CONFIRMED": "Confirmada",
+    "ACTIVE": "En curso",
+    "COMPLETED": "Completada",
+    "CANCELLED": "Cancelada"
+  },
+  "paymentStatus": {
+    "PENDING": "Pendiente",
+    "PROCESSING": "Procesando",
+    "HELD": "En custodia",
+    "RELEASED": "Liberado",
+    "REFUNDED": "Reembolsado",
+    "FAILED": "Fallido"
+  },
+  "kycDocuments": {
+    "id_document": "Documento de identidad",
+    "license": "Licencia de conducir",
+    "selfie": "Selfie con documento"
+  },
+  "userRoles": {
+    "HOST": "Anfitrión",
+    "DRIVER": "Conductor",
+    "ADMIN": "Administrador"
+  },
+  "features": {
+    "ac": "Aire acondicionado",
+    "bluetooth": "Bluetooth",
+    "gps": "GPS/Navegación",
+    "usb": "Puerto USB",
+    "aux": "Entrada auxiliar",
+    "backup_camera": "Cámara de reversa",
+    "cruise_control": "Control de crucero",
+    "sunroof": "Techo solar",
+    "leather_seats": "Asientos de cuero",
+    "heated_seats": "Asientos calefaccionados",
+    "child_seat": "Silla para niños",
+    "pet_friendly": "Acepta mascotas",
+    "smoke_free": "Libre de humo",
+    "bike_rack": "Portabicicletas",
+    "ski_rack": "Portaesquíes"
+  },
+  "adminPermissions": {
+    "admin:full": "Acceso total",
+    "admin:users": "Gestión de usuarios",
+    "admin:vehicles": "Gestión de vehículos",
+    "admin:bookings": "Gestión de reservas",
+    "admin:payments": "Pagos e ingresos",
+    "admin:kyc": "Verificación KYC",
+    "admin:settings": "Configuración de plataforma",
+    "admin:incidents": "Gestión de incidentes"
+  }
+}

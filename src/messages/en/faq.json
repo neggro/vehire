@@ -1,0 +1,41 @@
+{
+  "title": "Frequently Asked Questions",
+  "subtitle": "Find answers to the most common questions about {appName}",
+  "drivers": {
+    "title": "For drivers",
+    "q1": "How do I book a vehicle?",
+    "a1": "Search for available vehicles on our search page, select the dates you need and complete the booking process. If the vehicle has instant booking, your reservation is confirmed automatically. Otherwise, the host will need to approve it.",
+    "q2": "What do I need to rent?",
+    "a2": "You need a verified account on the platform, a valid driver's license, and to complete the identity verification process (KYC). Once verified, you can book any available vehicle.",
+    "q3": "How does the verification process (KYC) work?",
+    "a3": "From your profile, upload a photo of your ID document, your driver's license, and a selfie with your document. Our team will review the documents and notify you when your account is verified.",
+    "q4": "What payment methods do you accept?",
+    "a4": "We accept payments through Mercado Pago (credit/debit cards, transfers) and PayPal for payments in US dollars.",
+    "q5": "Can I cancel a booking?",
+    "a5": "Yes, you can cancel your booking at no cost within the first 24 hours after making it. After that period, cancellation charges may apply according to the host's policy.",
+    "q6": "What happens if the vehicle has a problem during the rental?",
+    "a6": "Contact the host immediately through the platform's messaging system. If you can't resolve the issue directly, our support team will assist you. You can report an incident from your booking page."
+  },
+  "hosts": {
+    "title": "For hosts",
+    "q1": "How do I list my vehicle?",
+    "a1": "Register as a host, complete your vehicle information (make, model, photos, daily price) and publish it. Once approved by our team, it will be available for drivers to book.",
+    "q2": "How much commission does the platform charge?",
+    "a2": "{appName} charges a 15% commission on the rental price to cover platform costs, payment processing, and customer support.",
+    "q3": "When do I receive payment?",
+    "a3": "Payment is automatically released once the rental is successfully completed. The amount is transferred to your account minus the platform commission.",
+    "q4": "Can I set my own availability?",
+    "a4": "Yes, you have full control over your calendar. You can mark days as unavailable, set different prices for weekends, and pause your listing whenever you want.",
+    "q5": "What is instant booking?",
+    "a5": "Instant booking allows drivers to confirm their reservation without your manual approval. This increases your chances of receiving bookings as drivers prefer immediate confirmation."
+  },
+  "general": {
+    "title": "General",
+    "q1": "In which cities is the service available?",
+    "a1": "We currently operate throughout Uruguay, with greater presence in Montevideo, Punta del Este, Colonia del Sacramento, Piriápolis, and Salto.",
+    "q2": "How does the security deposit work?",
+    "a2": "A security deposit equal to 10% of the estimated vehicle value is held. This amount is released at the end of the rental if there are no damages or incidents.",
+    "q3": "What do I do if I have a problem with my account?",
+    "a3": "You can contact us through our contact page or send a message from the platform. Our support team responds within a maximum of 24 hours."
+  }
+}

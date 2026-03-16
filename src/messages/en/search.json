@@ -1,0 +1,41 @@
+{
+  "filters": {
+    "title": "Filters",
+    "pricePerDay": "Price per day ($U)",
+    "min": "Min",
+    "max": "Max",
+    "transmission": "Transmission",
+    "all": "All",
+    "automatic": "Automatic",
+    "manual": "Manual",
+    "fuel": "Fuel",
+    "allFuels": "All",
+    "capacity": "Capacity",
+    "any": "Any",
+    "people2": "2+ people",
+    "people4": "4+ people",
+    "people5": "5+ people",
+    "people7": "7+ people",
+    "apply": "Apply filters",
+    "clear": "Clear filters"
+  },
+  "searchBar": {
+    "whereTo": "Where are you going?",
+    "wherePickup": "Where do you want to pick up?",
+    "when": "When?",
+    "dates": "Dates"
+  },
+  "results": {
+    "title": "Results",
+    "searching": "Searching...",
+    "vehiclesFound": "vehicles found",
+    "sortBy": "Sort by",
+    "relevance": "Relevance",
+    "priceLowHigh": "Price: low to high",
+    "priceHighLow": "Price: high to low",
+    "bestRated": "Best rated",
+    "noResults": "No vehicles found",
+    "noResultsHint": "Try adjusting the filters or search in a different location",
+    "hoverHint": "Hover over a card to see it on the map"
+  }
+}

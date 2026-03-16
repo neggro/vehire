@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { APP_NAME, APP_URL } from "@/constants";
+import { getLocale } from "next-intl/server";
 
 const sora = Sora({
   subsets: ["latin"],
@@ -55,13 +56,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+
   return (
-    <html lang="es" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body className={`${dmSans.variable} ${sora.variable} font-body antialiased`}>
         <ThemeProvider
           attribute="class"

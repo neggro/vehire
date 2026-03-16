@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Menu,
@@ -23,6 +24,7 @@ interface MobileNavProps {
 
 export function MobileNav({ isLoggedIn, isHost }: MobileNavProps) {
   const [open, setOpen] = useState(false);
+  const t = useTranslations("common.nav");
 
   return (
     <>
@@ -49,7 +51,7 @@ export function MobileNav({ isLoggedIn, isHost }: MobileNavProps) {
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b">
-                <span className="font-display font-bold text-lg">Menú</span>
+                <span className="font-display font-bold text-lg">{t("menu")}</span>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -66,7 +68,7 @@ export function MobileNav({ isLoggedIn, isHost }: MobileNavProps) {
                   <MobileNavLink
                     href="/search"
                     icon={Search}
-                    label="Buscar vehículos"
+                    label={t("searchVehicles")}
                     onClick={() => setOpen(false)}
                   />
                   {isLoggedIn && (
@@ -74,19 +76,19 @@ export function MobileNav({ isLoggedIn, isHost }: MobileNavProps) {
                       <MobileNavLink
                         href="/dashboard"
                         icon={LayoutDashboard}
-                        label="Dashboard"
+                        label={t("dashboard")}
                         onClick={() => setOpen(false)}
                       />
                       <MobileNavLink
                         href="/dashboard/favorites"
                         icon={Heart}
-                        label="Favoritos"
+                        label={t("favorites")}
                         onClick={() => setOpen(false)}
                       />
                       <MobileNavLink
                         href="/messages"
                         icon={MessageSquare}
-                        label="Mensajes"
+                        label={t("messages")}
                         onClick={() => setOpen(false)}
                       />
                       {isHost && (
@@ -94,13 +96,13 @@ export function MobileNav({ isLoggedIn, isHost }: MobileNavProps) {
                           <MobileNavLink
                             href="/host/vehicles"
                             icon={Car}
-                            label="Mis vehículos"
+                            label={t("myVehicles")}
                             onClick={() => setOpen(false)}
                           />
                           <MobileNavLink
                             href="/host/vehicles/new"
                             icon={Plus}
-                            label="Publicar vehículo"
+                            label={t("publishVehicle")}
                             onClick={() => setOpen(false)}
                           />
                         </>
@@ -108,7 +110,7 @@ export function MobileNav({ isLoggedIn, isHost }: MobileNavProps) {
                       <MobileNavLink
                         href="/dashboard/settings"
                         icon={User}
-                        label="Configuración"
+                        label={t("settings")}
                         onClick={() => setOpen(false)}
                       />
                     </>
@@ -124,18 +126,18 @@ export function MobileNav({ isLoggedIn, isHost }: MobileNavProps) {
                     className="w-full justify-start gap-2.5 rounded-lg"
                     asChild
                   >
-                    <Link href="/api/auth/signout">
+                    <a href="/api/auth/signout">
                       <LogOut className="h-4 w-4" />
-                      Cerrar sesión
-                    </Link>
+                      {t("logout")}
+                    </a>
                   </Button>
                 ) : (
                   <>
                     <Button className="w-full rounded-lg" asChild>
-                      <Link href="/login">Registrarse</Link>
+                      <Link href="/login">{t("register")}</Link>
                     </Button>
                     <Button variant="outline" className="w-full rounded-lg" asChild>
-                      <Link href="/login">Ingresar</Link>
+                      <Link href="/login">{t("login")}</Link>
                     </Button>
                   </>
                 )}

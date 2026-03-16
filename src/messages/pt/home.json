@@ -1,0 +1,57 @@
+{
+  "hero": {
+    "title": "A forma mais fácil de alugar um carro",
+    "subtitle": "Alugue veículos únicos no Uruguai",
+    "description": "{appName} conecta proprietários de veículos com pessoas que precisam de um carro. De econômicos a esportivos de luxo.",
+    "cta": "Começar a buscar",
+    "popular": "Popular:"
+  },
+  "features": {
+    "title": "Por que escolher {appName}?",
+    "subtitle": "Somos a plataforma líder em aluguel de veículos entre particulares no Uruguai",
+    "findPerfect": "Encontre o carro perfeito",
+    "findPerfectDesc": "Busque entre centenas de veículos por localização, tipo, preço e mais.",
+    "securBooking": "Reserva segura",
+    "securBookingDesc": "Todos os veículos são verificados e incluem cobertura de seguro.",
+    "easyPayment": "Pagamento fácil",
+    "easyPaymentDesc": "Pague com segurança pelo Mercado Pago. Sem custos ocultos."
+  },
+  "howItWorks": {
+    "title": "Como funciona",
+    "subtitle": "Alugar um carro nunca foi tão fácil",
+    "step1Title": "Busque",
+    "step1Desc": "Encontre o veículo ideal para sua viagem em qualquer cidade",
+    "step2Title": "Reserve",
+    "step2Desc": "Escolha as datas e faça seu pagamento com segurança",
+    "step3Title": "Dirija",
+    "step3Desc": "Retire o veículo e aproveite sua viagem sem preocupações"
+  },
+  "stats": {
+    "vehicles": "Veículos disponíveis",
+    "trips": "Viagens realizadas",
+    "rating": "Classificação média",
+    "support": "Suporte ao cliente"
+  },
+  "hosts": {
+    "title": "Para proprietários",
+    "subtitle": "Tem um veículo?",
+    "description": "Ganhe dinheiro compartilhando seu carro quando não o usa. Milhares de anfitriões já estão gerando renda extra.",
+    "benefit1": "Ganhe dinheiro extra todo mês",
+    "benefit2": "Você controla sua disponibilidade",
+    "benefit3": "Seguro incluído em cada viagem",
+    "benefit4": "Suporte 24/7",
+    "cta": "Torne-se anfitrião",
+    "costToPublish": "Custo para publicar",
+    "avgEarning": "Ganho médio por veículo"
+  },
+  "testimonials": {
+    "title": "O que nossos usuários dizem",
+    "subtitle": "Milhares de pessoas confiam no {appName}"
+  },
+  "cta": {
+    "title": "Pronto para sua próxima viagem?",
+    "subtitle": "Junte-se a milhares de pessoas que já confiam no {appName}",
+    "searchVehicles": "Buscar veículos",
+    "loginNow": "Entre agora"
+  }
+}

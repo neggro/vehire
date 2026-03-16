@@ -1,0 +1,143 @@
+{
+  "nav": {
+    "searchVehicles": "Search vehicles",
+    "myVehicles": "My vehicles",
+    "myBookings": "My bookings",
+    "publish": "List vehicle",
+    "favorites": "Favorites",
+    "messages": "Messages",
+    "hostPanel": "Host panel",
+    "settings": "Settings",
+    "logout": "Sign out",
+    "login": "Sign in",
+    "register": "Sign up",
+    "dashboard": "Dashboard",
+    "publishVehicle": "List a vehicle",
+    "menu": "Menu",
+    "backToHome": "Back to home",
+    "backToSearch": "Back to search",
+    "backToDashboard": "Back to dashboard"
+  },
+  "footer": {
+    "description": "The best platform for peer-to-peer vehicle rental in Uruguay.",
+    "explore": "Explore",
+    "searchVehicles": "Search vehicles",
+    "becomeHost": "Become a host",
+    "faq": "FAQ",
+    "support": "Support",
+    "contact": "Contact",
+    "helpCenter": "Help center",
+    "insurance": "Insurance",
+    "safety": "Safety",
+    "legal": "Legal",
+    "terms": "Terms of service",
+    "privacy": "Privacy",
+    "cookies": "Cookies",
+    "allRightsReserved": "All rights reserved.",
+    "madeInUruguay": "Made with care in Uruguay"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "apply": "Apply",
+    "clear": "Clear",
+    "search": "Search",
+    "loading": "Loading...",
+    "viewMore": "View more",
+    "viewDetail": "View details",
+    "continue": "Continue",
+    "goBack": "Go back",
+    "saveChanges": "Save changes",
+    "saved": "Saved",
+    "viewAll": "View all"
+  },
+  "labels": {
+    "perDay": "/day",
+    "review": "review",
+    "reviews": "reviews",
+    "seats": "seats",
+    "host": "Host",
+    "driver": "Driver",
+    "admin": "Administrator",
+    "verified": "Verified",
+    "rejected": "Rejected",
+    "pending": "Pending",
+    "memberSince": "Member since {year}",
+    "activeVehicles": "active vehicles",
+    "error": "Error",
+    "success": "Success"
+  },
+  "transmission": {
+    "manual": "Manual",
+    "automatic": "Automatic"
+  },
+  "fuelType": {
+    "gasoline": "Gasoline",
+    "diesel": "Diesel",
+    "electric": "Electric",
+    "hybrid": "Hybrid"
+  },
+  "vehicleStatus": {
+    "DRAFT": "Draft",
+    "PENDING_APPROVAL": "Pending approval",
+    "ACTIVE": "Active",
+    "PAUSED": "Paused",
+    "REJECTED": "Rejected"
+  },
+  "bookingStatus": {
+    "PENDING": "Pending payment",
+    "CONFIRMED": "Confirmed",
+    "ACTIVE": "In progress",
+    "COMPLETED": "Completed",
+    "CANCELLED": "Cancelled"
+  },
+  "paymentStatus": {
+    "PENDING": "Pending",
+    "PROCESSING": "Processing",
+    "HELD": "Held",
+    "RELEASED": "Released",
+    "REFUNDED": "Refunded",
+    "FAILED": "Failed"
+  },
+  "kycDocuments": {
+    "id_document": "ID document",
+    "license": "Driver's license",
+    "selfie": "Selfie with document"
+  },
+  "userRoles": {
+    "HOST": "Host",
+    "DRIVER": "Driver",
+    "ADMIN": "Administrator"
+  },
+  "features": {
+    "ac": "Air conditioning",
+    "bluetooth": "Bluetooth",
+    "gps": "GPS/Navigation",
+    "usb": "USB port",
+    "aux": "Auxiliary input",
+    "backup_camera": "Backup camera",
+    "cruise_control": "Cruise control",
+    "sunroof": "Sunroof",
+    "leather_seats": "Leather seats",
+    "heated_seats": "Heated seats",
+    "child_seat": "Child seat",
+    "pet_friendly": "Pet friendly",
+    "smoke_free": "Smoke free",
+    "bike_rack": "Bike rack",
+    "ski_rack": "Ski rack"
+  },
+  "adminPermissions": {
+    "admin:full": "Full access",
+    "admin:users": "User management",
+    "admin:vehicles": "Vehicle management",
+    "admin:bookings": "Booking management",
+    "admin:payments": "Payments & revenue",
+    "admin:kyc": "KYC verification",
+    "admin:settings": "Platform settings",
+    "admin:incidents": "Incident management"
+  }
+}

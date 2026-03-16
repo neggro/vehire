@@ -1,0 +1,57 @@
+{
+  "hero": {
+    "title": "The easiest way to rent a car",
+    "subtitle": "Rent unique vehicles in Uruguay",
+    "description": "{appName} connects vehicle owners with people who need a car. From economy to luxury sports cars.",
+    "cta": "Start searching",
+    "popular": "Popular:"
+  },
+  "features": {
+    "title": "Why choose {appName}?",
+    "subtitle": "We are the leading peer-to-peer vehicle rental platform in Uruguay",
+    "findPerfect": "Find the perfect car",
+    "findPerfectDesc": "Search hundreds of vehicles by location, type, price and more.",
+    "securBooking": "Secure booking",
+    "securBookingDesc": "All vehicles are verified and include insurance coverage.",
+    "easyPayment": "Easy payment",
+    "easyPaymentDesc": "Pay securely with Mercado Pago. No hidden fees."
+  },
+  "howItWorks": {
+    "title": "How it works",
+    "subtitle": "Renting a car has never been easier",
+    "step1Title": "Search",
+    "step1Desc": "Find the ideal vehicle for your trip in any city",
+    "step2Title": "Book",
+    "step2Desc": "Choose your dates and make your payment securely",
+    "step3Title": "Drive",
+    "step3Desc": "Pick up the vehicle and enjoy your trip worry-free"
+  },
+  "stats": {
+    "vehicles": "Available vehicles",
+    "trips": "Trips completed",
+    "rating": "Average rating",
+    "support": "Customer support"
+  },
+  "hosts": {
+    "title": "For owners",
+    "subtitle": "Have a vehicle?",
+    "description": "Earn money by sharing your car when you're not using it. Thousands of hosts are already earning extra income.",
+    "benefit1": "Earn extra money every month",
+    "benefit2": "You control your availability",
+    "benefit3": "Insurance included on every trip",
+    "benefit4": "24/7 support",
+    "cta": "Become a host",
+    "costToPublish": "Cost to list",
+    "avgEarning": "Average earnings per vehicle"
+  },
+  "testimonials": {
+    "title": "What our users say",
+    "subtitle": "Thousands of people trust {appName}"
+  },
+  "cta": {
+    "title": "Ready for your next trip?",
+    "subtitle": "Join thousands of people who already trust {appName}",
+    "searchVehicles": "Search vehicles",
+    "loginNow": "Sign in now"
+  }
+}

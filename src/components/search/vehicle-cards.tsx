@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import {
   Car,
   Star,
 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   FUEL_TYPE_LABELS,
   TRANSMISSION_LABELS,
@@ -93,6 +94,7 @@ export function VehicleCard({
   isFavorite?: boolean;
   isLoggedIn?: boolean;
 }) {
+  const t = useTranslations("common");
   return (
     <Card className="group overflow-hidden border-border/40 card-hover">
       <Link href={`/vehicle/${vehicle.id}`}>
@@ -138,10 +140,10 @@ export function VehicleCard({
               <span className="text-lg font-bold font-display">
                 {formatPrice(vehicle.basePriceDay)}
               </span>
-              <span className="text-sm text-muted-foreground">/día</span>
+              <span className="text-sm text-muted-foreground">{t("labels.perDay")}</span>
             </div>
             <Button size="sm" className="rounded-lg shadow-sm">
-              Ver más
+              {t("actions.viewMore")}
             </Button>
           </div>
         </Link>
@@ -166,6 +168,7 @@ export function VehicleListItem({
   isFavorite?: boolean;
   isLoggedIn?: boolean;
 }) {
+  const t = useTranslations("common");
   return (
     <Card
       className={`group overflow-hidden border-border/40 transition-all duration-200 hover:shadow-lg ${
@@ -220,9 +223,9 @@ export function VehicleListItem({
 
               {/* Host info */}
               <p className="mt-2 text-sm text-muted-foreground">
-                Anfitrión: <span className="text-foreground font-medium">{vehicle.host.fullName}</span>
+                {t("labels.host")}: <span className="text-foreground font-medium">{vehicle.host.fullName}</span>
                 {vehicle.reviewCount > 0 && (
-                  <span className="ml-2">· {vehicle.reviewCount} reseña{vehicle.reviewCount !== 1 ? "s" : ""}</span>
+                  <span className="ml-2">· {vehicle.reviewCount} {vehicle.reviewCount !== 1 ? t("labels.reviews") : t("labels.review")}</span>
                 )}
               </p>
             </div>
@@ -233,10 +236,10 @@ export function VehicleListItem({
                 <span className="text-xl font-bold font-display">
                   {formatPrice(vehicle.basePriceDay)}
                 </span>
-                <span className="text-sm text-muted-foreground">/día</span>
+                <span className="text-sm text-muted-foreground">{t("labels.perDay")}</span>
               </div>
               <Button className="rounded-lg shadow-sm px-6">
-                Ver detalle
+                {t("actions.viewDetail")}
               </Button>
             </div>
           </div>
@@ -258,6 +261,7 @@ export function VehicleMapCard({
   isSelected?: boolean;
   onHover?: (id: string | null) => void;
 }) {
+  const t = useTranslations("common");
   return (
     <Card
       className={`group overflow-hidden border-border/40 transition-all duration-200 hover:shadow-md cursor-pointer ${
@@ -306,7 +310,7 @@ export function VehicleMapCard({
                 <span className="text-sm font-bold font-display">
                   {formatPrice(vehicle.basePriceDay)}
                 </span>
-                <span className="text-xs text-muted-foreground">/día</span>
+                <span className="text-xs text-muted-foreground">{t("labels.perDay")}</span>
               </div>
               <div className="flex gap-2 text-xs text-muted-foreground">
                 <span className="flex items-center gap-0.5">

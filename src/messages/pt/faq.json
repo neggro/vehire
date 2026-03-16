@@ -1,0 +1,41 @@
+{
+  "title": "Perguntas Frequentes",
+  "subtitle": "Encontre respostas às perguntas mais comuns sobre {appName}",
+  "drivers": {
+    "title": "Para motoristas",
+    "q1": "Como reservo um veículo?",
+    "a1": "Busque veículos disponíveis em nossa página de busca, selecione as datas que precisa e complete o processo de reserva. Se o veículo tem reserva instantânea, sua reserva é confirmada automaticamente. Caso contrário, o anfitrião deverá aprová-la.",
+    "q2": "O que preciso para alugar?",
+    "a2": "Você precisa ter uma conta verificada na plataforma, uma carteira de motorista válida e completar o processo de verificação de identidade (KYC). Uma vez verificado, pode reservar qualquer veículo disponível.",
+    "q3": "Como funciona o processo de verificação (KYC)?",
+    "a3": "No seu perfil, envie uma foto do seu documento de identidade, sua carteira de motorista e uma selfie com seu documento. Nossa equipe revisará os documentos e notificará quando sua conta estiver verificada.",
+    "q4": "Quais métodos de pagamento aceitam?",
+    "a4": "Aceitamos pagamentos pelo Mercado Pago (cartões de crédito/débito, transferências) e PayPal para pagamentos em dólares.",
+    "q5": "Posso cancelar uma reserva?",
+    "a5": "Sim, você pode cancelar sua reserva sem custo nas primeiras 24 horas após realizá-la. Após esse período, podem ser aplicadas taxas de cancelamento conforme a política do anfitrião.",
+    "q6": "O que acontece se o veículo tiver um problema durante o aluguel?",
+    "a6": "Entre em contato imediatamente com o anfitrião pelo sistema de mensagens da plataforma. Se não puder resolver o problema diretamente, nossa equipe de suporte ajudará. Você pode reportar um incidente na página da sua reserva."
+  },
+  "hosts": {
+    "title": "Para anfitriões",
+    "q1": "Como publico meu veículo?",
+    "a1": "Cadastre-se como anfitrião, complete as informações do seu veículo (marca, modelo, fotos, preço por dia) e publique. Uma vez aprovado pela nossa equipe, estará disponível para os motoristas reservarem.",
+    "q2": "Quanto a plataforma cobra de comissão?",
+    "a2": "{appName} cobra uma comissão de 15% sobre o preço do aluguel para cobrir os custos da plataforma, processamento de pagamentos e suporte ao cliente.",
+    "q3": "Quando recebo o pagamento?",
+    "a3": "O pagamento é liberado automaticamente após a conclusão bem-sucedida do aluguel. O valor é transferido para sua conta descontando a comissão da plataforma.",
+    "q4": "Posso definir minha própria disponibilidade?",
+    "a4": "Sim, você tem controle total sobre seu calendário. Pode marcar dias como indisponíveis, estabelecer preços diferenciados para fins de semana e pausar sua publicação quando quiser.",
+    "q5": "O que é a reserva instantânea?",
+    "a5": "A reserva instantânea permite que os motoristas confirmem sua reserva sem sua aprovação manual. Isso aumenta as chances de receber reservas, pois os motoristas preferem confirmação imediata."
+  },
+  "general": {
+    "title": "Geral",
+    "q1": "Em quais cidades o serviço está disponível?",
+    "a1": "Atualmente operamos em todo o Uruguai, com maior presença em Montevidéu, Punta del Este, Colonia del Sacramento, Piriápolis e Salto.",
+    "q2": "Como funciona o depósito de segurança?",
+    "a2": "É retido um depósito de segurança equivalente a 10% do valor estimado do veículo. Este valor é liberado ao finalizar o aluguel se não houver danos nem incidentes.",
+    "q3": "O que faço se tiver um problema com minha conta?",
+    "a3": "Você pode nos contatar pela nossa página de contato ou enviar uma mensagem pela plataforma. Nossa equipe de suporte responde em no máximo 24 horas."
+  }
+}

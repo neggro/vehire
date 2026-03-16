@@ -1,0 +1,15 @@
+{
+  "title": "Contato",
+  "subtitle": "Estamos aqui para ajudar. Entre em contato por qualquer um destes meios.",
+  "email": "Email",
+  "emailDesc": "Para consultas gerais e suporte",
+  "phone": "Telefone",
+  "phoneHours": "Segunda a sexta, 9:00 às 18:00",
+  "office": "Escritório",
+  "officeLocation": "Montevidéu, Uruguai",
+  "businessHours": "Horário de atendimento",
+  "weekdayHours": "Segunda a sexta: 9:00 - 18:00",
+  "saturdayHours": "Sábados: 10:00 - 14:00",
+  "emergencyTitle": "Tem uma emergência durante um aluguel?",
+  "emergencyText": "Se tiver um problema urgente durante um aluguel ativo, use o sistema de mensagens da plataforma para contatar diretamente o anfitrião ou reporte um incidente na página da sua reserva. Nossa equipe de suporte priorizará seu caso."
+}

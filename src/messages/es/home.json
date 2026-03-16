@@ -1,0 +1,57 @@
+{
+  "hero": {
+    "title": "La forma más fácil de alquilar un auto",
+    "subtitle": "Alquila vehículos únicos en Uruguay",
+    "description": "{appName} conecta a propietarios de vehículos con personas que necesitan un auto. Desde económicos hasta deportivos de lujo.",
+    "cta": "Comenzar a buscar",
+    "popular": "Popular:"
+  },
+  "features": {
+    "title": "¿Por qué elegir {appName}?",
+    "subtitle": "Somos la plataforma líder en alquiler de vehículos entre particulares en Uruguay",
+    "findPerfect": "Encuentra el auto perfecto",
+    "findPerfectDesc": "Busca entre cientos de vehículos por ubicación, tipo, precio y más.",
+    "securBooking": "Reserva segura",
+    "securBookingDesc": "Todos los vehículos están verificados y contamos con seguro incluido.",
+    "easyPayment": "Pago fácil",
+    "easyPaymentDesc": "Paga de forma segura con Mercado Pago. Sin costos ocultos."
+  },
+  "howItWorks": {
+    "title": "Cómo funciona",
+    "subtitle": "Alquilar un auto nunca fue tan fácil",
+    "step1Title": "Busca",
+    "step1Desc": "Encuentra el vehículo ideal para tu viaje en cualquier ciudad",
+    "step2Title": "Reserva",
+    "step2Desc": "Elige las fechas y realiza tu pago de forma segura",
+    "step3Title": "Conduce",
+    "step3Desc": "Recoge el vehículo y disfruta tu viaje sin preocupaciones"
+  },
+  "stats": {
+    "vehicles": "Vehículos disponibles",
+    "trips": "Viajes realizados",
+    "rating": "Calificación promedio",
+    "support": "Soporte al cliente"
+  },
+  "hosts": {
+    "title": "Para propietarios",
+    "subtitle": "¿Tienes un vehículo?",
+    "description": "Gana dinero compartiendo tu auto cuando no lo usas. Miles de anfitriones ya están generando ingresos extra.",
+    "benefit1": "Gana dinero extra cada mes",
+    "benefit2": "Tú controlas tu disponibilidad",
+    "benefit3": "Seguro incluido en cada viaje",
+    "benefit4": "Soporte 24/7",
+    "cta": "Conviértete en anfitrión",
+    "costToPublish": "Costo para publicar",
+    "avgEarning": "Ganancia promedio por vehículo"
+  },
+  "testimonials": {
+    "title": "Lo que dicen nuestros usuarios",
+    "subtitle": "Miles de personas confían en {appName}"
+  },
+  "cta": {
+    "title": "¿Listo para tu próximo viaje?",
+    "subtitle": "Únete a miles de personas que ya confían en {appName}",
+    "searchVehicles": "Buscar vehículos",
+    "loginNow": "Ingresa ahora"
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "nav": {
+    "searchVehicles": "Buscar veículos",
+    "myVehicles": "Meus veículos",
+    "myBookings": "Minhas reservas",
+    "publish": "Publicar",
+    "favorites": "Favoritos",
+    "messages": "Mensagens",
+    "hostPanel": "Painel do anfitrião",
+    "settings": "Configurações",
+    "logout": "Sair",
+    "login": "Entrar",
+    "register": "Cadastrar",
+    "dashboard": "Painel",
+    "publishVehicle": "Publicar veículo",
+    "menu": "Menu",
+    "backToHome": "Voltar ao início",
+    "backToSearch": "Voltar à busca",
+    "backToDashboard": "Voltar ao painel"
+  },
+  "footer": {
+    "description": "A melhor plataforma de aluguel de veículos entre particulares no Uruguai.",
+    "explore": "Explorar",
+    "searchVehicles": "Buscar veículos",
+    "becomeHost": "Seja anfitrião",
+    "faq": "Perguntas frequentes",
+    "support": "Suporte",
+    "contact": "Contato",
+    "helpCenter": "Central de ajuda",
+    "insurance": "Seguros",
+    "safety": "Segurança",
+    "legal": "Legal",
+    "terms": "Termos de serviço",
+    "privacy": "Privacidade",
+    "cookies": "Cookies",
+    "allRightsReserved": "Todos os direitos reservados.",
+    "madeInUruguay": "Feito com carinho no Uruguai"
+  },
+  "actions": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "close": "Fechar",
+    "apply": "Aplicar",
+    "clear": "Limpar",
+    "search": "Buscar",
+    "loading": "Carregando...",
+    "viewMore": "Ver mais",
+    "viewDetail": "Ver detalhes",
+    "continue": "Continuar",
+    "goBack": "Voltar",
+    "saveChanges": "Salvar alterações",
+    "saved": "Salvo",
+    "viewAll": "Ver tudo"
+  },
+  "labels": {
+    "perDay": "/dia",
+    "review": "avaliação",
+    "reviews": "avaliações",
+    "seats": "assentos",
+    "host": "Anfitrião",
+    "driver": "Motorista",
+    "admin": "Administrador",
+    "verified": "Verificado",
+    "rejected": "Rejeitado",
+    "pending": "Pendente",
+    "memberSince": "Membro desde {year}",
+    "activeVehicles": "veículos ativos",
+    "error": "Erro",
+    "success": "Sucesso"
+  },
+  "transmission": {
+    "manual": "Manual",
+    "automatic": "Automático"
+  },
+  "fuelType": {
+    "gasoline": "Gasolina",
+    "diesel": "Diesel",
+    "electric": "Elétrico",
+    "hybrid": "Híbrido"
+  },
+  "vehicleStatus": {
+    "DRAFT": "Rascunho",
+    "PENDING_APPROVAL": "Pendente de aprovação",
+    "ACTIVE": "Ativo",
+    "PAUSED": "Pausado",
+    "REJECTED": "Rejeitado"
+  },
+  "bookingStatus": {
+    "PENDING": "Pendente de pagamento",
+    "CONFIRMED": "Confirmada",
+    "ACTIVE": "Em andamento",
+    "COMPLETED": "Concluída",
+    "CANCELLED": "Cancelada"
+  },
+  "paymentStatus": {
+    "PENDING": "Pendente",
+    "PROCESSING": "Processando",
+    "HELD": "Em custódia",
+    "RELEASED": "Liberado",
+    "REFUNDED": "Reembolsado",
+    "FAILED": "Falhou"
+  },
+  "kycDocuments": {
+    "id_document": "Documento de identidade",
+    "license": "Carteira de motorista",
+    "selfie": "Selfie com documento"
+  },
+  "userRoles": {
+    "HOST": "Anfitrião",
+    "DRIVER": "Motorista",
+    "ADMIN": "Administrador"
+  },
+  "features": {
+    "ac": "Ar condicionado",
+    "bluetooth": "Bluetooth",
+    "gps": "GPS/Navegação",
+    "usb": "Porta USB",
+    "aux": "Entrada auxiliar",
+    "backup_camera": "Câmera de ré",
+    "cruise_control": "Piloto automático",
+    "sunroof": "Teto solar",
+    "leather_seats": "Bancos de couro",
+    "heated_seats": "Bancos aquecidos",
+    "child_seat": "Cadeira infantil",
+    "pet_friendly": "Aceita animais",
+    "smoke_free": "Livre de fumaça",
+    "bike_rack": "Suporte para bicicleta",
+    "ski_rack": "Suporte para esqui"
+  },
+  "adminPermissions": {
+    "admin:full": "Acesso total",
+    "admin:users": "Gestão de usuários",
+    "admin:vehicles": "Gestão de veículos",
+    "admin:bookings": "Gestão de reservas",
+    "admin:payments": "Pagamentos e receitas",
+    "admin:kyc": "Verificação KYC",
+    "admin:settings": "Configurações da plataforma",
+    "admin:incidents": "Gestão de incidentes"
+  }
+}

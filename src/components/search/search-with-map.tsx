@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,11 +72,13 @@ function SearchFilters({
   showMobile,
   onClose,
 }: SearchFiltersProps) {
+  const t = useTranslations("search.filters");
+  const tc = useTranslations("common");
   return (
     <div className={`space-y-8 ${showMobile ? "p-6" : ""}`}>
       {showMobile && (
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xl font-bold">Filtros</h2>
+          <h2 className="text-xl font-bold">{t("title")}</h2>
           <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
             <X className="h-5 w-5" />
           </Button>
@@ -84,12 +88,12 @@ function SearchFilters({
       <div className="space-y-6">
         {/* Price Range */}
         <div className="space-y-3">
-          <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Precio por día ($U)</label>
+          <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("pricePerDay")}</label>
           <div className="grid grid-cols-2 gap-3">
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
               <Input
-                placeholder="Mín"
+                placeholder={t("min")}
                 type="number"
                 value={filters.minPrice}
                 onChange={(e) => onFilterChange("minPrice", e.target.value)}
@@ -99,7 +103,7 @@ function SearchFilters({
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
               <Input
-                placeholder="Máx"
+                placeholder={t("max")}
                 type="number"
                 value={filters.maxPrice}
                 onChange={(e) => onFilterChange("maxPrice", e.target.value)}
@@ -111,58 +115,58 @@ function SearchFilters({
 
         {/* Transmission */}
         <div className="space-y-3">
-          <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Transmisión</label>
+          <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("transmission")}</label>
           <Select
             value={filters.transmission}
             onValueChange={(value) => onFilterChange("transmission", value)}
           >
             <SelectTrigger className="h-11">
-              <SelectValue placeholder="Todas" />
+              <SelectValue placeholder={t("all")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="automatic">Automática</SelectItem>
-              <SelectItem value="manual">Manual</SelectItem>
+              <SelectItem value="all">{t("all")}</SelectItem>
+              <SelectItem value="automatic">{t("automatic")}</SelectItem>
+              <SelectItem value="manual">{t("manual")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Fuel Type */}
         <div className="space-y-3">
-          <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Combustible</label>
+          <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("fuel")}</label>
           <Select
             value={filters.fuelType}
             onValueChange={(value) => onFilterChange("fuelType", value)}
           >
             <SelectTrigger className="h-11">
-              <SelectValue placeholder="Todos" />
+              <SelectValue placeholder={t("allFuels")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="gasoline">Nafta</SelectItem>
-              <SelectItem value="diesel">Diésel</SelectItem>
-              <SelectItem value="electric">Eléctrico</SelectItem>
-              <SelectItem value="hybrid">Híbrido</SelectItem>
+              <SelectItem value="all">{t("allFuels")}</SelectItem>
+              <SelectItem value="gasoline">{tc("fuelType.gasoline")}</SelectItem>
+              <SelectItem value="diesel">{tc("fuelType.diesel")}</SelectItem>
+              <SelectItem value="electric">{tc("fuelType.electric")}</SelectItem>
+              <SelectItem value="hybrid">{tc("fuelType.hybrid")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Seats */}
         <div className="space-y-3">
-          <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Capacidad</label>
+          <label className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{t("capacity")}</label>
           <Select
             value={filters.minSeats}
             onValueChange={(value) => onFilterChange("minSeats", value)}
           >
             <SelectTrigger className="h-11">
-              <SelectValue placeholder="Cualquiera" />
+              <SelectValue placeholder={t("any")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Cualquiera</SelectItem>
-              <SelectItem value="2">2+ personas</SelectItem>
-              <SelectItem value="4">4+ personas</SelectItem>
-              <SelectItem value="5">5+ personas</SelectItem>
-              <SelectItem value="7">7+ personas</SelectItem>
+              <SelectItem value="all">{t("any")}</SelectItem>
+              <SelectItem value="2">{t("people2")}</SelectItem>
+              <SelectItem value="4">{t("people4")}</SelectItem>
+              <SelectItem value="5">{t("people5")}</SelectItem>
+              <SelectItem value="7">{t("people7")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -170,10 +174,10 @@ function SearchFilters({
 
       <div className="pt-4 space-y-3">
         <Button className="w-full h-12 text-base font-semibold shadow-md rounded-xl" onClick={onApply}>
-          Aplicar filtros
+          {t("apply")}
         </Button>
         <Button variant="outline" className="w-full h-12 text-base rounded-xl" onClick={onReset}>
-          Limpiar filtros
+          {t("clear")}
         </Button>
       </div>
     </div>
@@ -181,6 +185,7 @@ function SearchFilters({
 }
 
 export default function SearchWithMap() {
+  const t = useTranslations("search");
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -411,7 +416,7 @@ export default function SearchWithMap() {
               <PlacesAutocomplete
                 value={filters.city}
                 onChange={(value) => handleFilterChange("city", value)}
-                placeholder="¿Dónde quieres retirar el vehículo?"
+                placeholder={t("searchBar.wherePickup")}
                 variant="ghost"
               />
             </div>
@@ -426,7 +431,7 @@ export default function SearchWithMap() {
                 startTime={dateRange.startTime}
                 endTime={dateRange.endTime}
                 onChange={handleDateRangeChange}
-                placeholder="¿Cuándo?"
+                placeholder={t("searchBar.when")}
                 className="w-full border-none shadow-none bg-transparent h-12 hover:bg-transparent focus:ring-0"
               />
             </div>
@@ -442,7 +447,7 @@ export default function SearchWithMap() {
               <PlacesAutocomplete
                 value={filters.city}
                 onChange={(value) => handleFilterChange("city", value)}
-                placeholder="¿A dónde vas?"
+                placeholder={t("searchBar.whereTo")}
                 className="flex-1"
               />
               <div className="w-px h-6 bg-border" />
@@ -461,7 +466,7 @@ export default function SearchWithMap() {
               startTime={dateRange.startTime}
               endTime={dateRange.endTime}
               onChange={handleDateRangeChange}
-              placeholder="Fechas"
+              placeholder={t("searchBar.dates")}
               compact
               className="w-full h-11 rounded-xl"
             />
@@ -492,13 +497,13 @@ export default function SearchWithMap() {
             <div className="mb-6 flex items-center justify-between">
               <p className="text-muted-foreground">
                 {isLoading ? (
-                  "Buscando..."
+                  t("results.searching")
                 ) : (
                   <>
                     <span className="font-medium text-foreground">
                       {pagination.total}
                     </span>{" "}
-                    vehículos encontrados
+                    {t("results.vehiclesFound")}
                   </>
                 )}
               </p>
@@ -508,13 +513,13 @@ export default function SearchWithMap() {
                   onValueChange={(value) => setSortBy(value)}
                 >
                   <SelectTrigger className="w-[180px] hidden sm:flex">
-                    <SelectValue placeholder="Ordenar por" />
+                    <SelectValue placeholder={t("results.sortBy")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="relevance">Relevancia</SelectItem>
-                    <SelectItem value="price_asc">Precio: menor a mayor</SelectItem>
-                    <SelectItem value="price_desc">Precio: mayor a menor</SelectItem>
-                    <SelectItem value="rating">Mejor calificados</SelectItem>
+                    <SelectItem value="relevance">{t("results.relevance")}</SelectItem>
+                    <SelectItem value="price_asc">{t("results.priceLowHigh")}</SelectItem>
+                    <SelectItem value="price_desc">{t("results.priceHighLow")}</SelectItem>
+                    <SelectItem value="rating">{t("results.bestRated")}</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="flex border rounded-md">
@@ -580,12 +585,12 @@ export default function SearchWithMap() {
                 <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-muted">
                   <Car className="h-10 w-10 text-muted-foreground/40" />
                 </div>
-                <h3 className="font-display font-semibold text-lg mb-2">No se encontraron vehículos</h3>
+                <h3 className="font-display font-semibold text-lg mb-2">{t("results.noResults")}</h3>
                 <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-                  Intenta ajustar los filtros o buscar en otra ubicación
+                  {t("results.noResultsHint")}
                 </p>
                 <Button variant="outline" onClick={handleResetFilters} className="rounded-xl">
-                  Limpiar filtros
+                  {t("filters.clear")}
                 </Button>
               </div>
             )}
@@ -645,9 +650,9 @@ export default function SearchWithMap() {
                 <div className="border-t lg:border-t-0 lg:border-l border-border/40 flex flex-col">
                   {/* Sidebar header */}
                   <div className="px-4 py-3 border-b border-border/40 bg-muted/30 shrink-0">
-                    <h3 className="font-display font-semibold text-sm">Resultados</h3>
+                    <h3 className="font-display font-semibold text-sm">{t("results.title")}</h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Pasa el mouse sobre una tarjeta para ver en el mapa
+                      {t("results.hoverHint")}
                     </p>
                   </div>
                   {/* Scrollable cards */}

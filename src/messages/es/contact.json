@@ -1,0 +1,15 @@
+{
+  "title": "Contacto",
+  "subtitle": "Estamos para ayudarte. Contactanos por cualquiera de estos medios.",
+  "email": "Email",
+  "emailDesc": "Para consultas generales y soporte",
+  "phone": "Teléfono",
+  "phoneHours": "Lunes a viernes, 9:00 a 18:00",
+  "office": "Oficina",
+  "officeLocation": "Montevideo, Uruguay",
+  "businessHours": "Horario de atención",
+  "weekdayHours": "Lunes a viernes: 9:00 - 18:00",
+  "saturdayHours": "Sábados: 10:00 - 14:00",
+  "emergencyTitle": "¿Tenés una emergencia durante un alquiler?",
+  "emergencyText": "Si tenés un problema urgente durante un alquiler activo, usá el sistema de mensajes dentro de la plataforma para contactar directamente al anfitrión o reportá un incidente desde la página de tu reserva. Nuestro equipo de soporte priorizará tu caso."
+}

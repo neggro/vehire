@@ -1,5 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { locales } from "@/i18n/config";
+
+// Strip locale prefix from pathname for route matching
+function stripLocalePrefix(pathname: string): string {
+  for (const locale of locales) {
+    if (pathname.startsWith(`/${locale}/`)) {
+      return pathname.slice(locale.length + 1);
+    }
+    if (pathname === `/${locale}`) {
+      return "/";
+    }
+  }
+  return pathname;
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -37,11 +51,11 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Protected routes
+  // Protected routes - strip locale prefix before matching
   const protectedPaths = ["/dashboard", "/driver", "/admin", "/booking"];
   // /host dashboard routes (exact or known subroutes) — but not /host/[id] (public profile)
   const hostDashboardPaths = ["/host/bookings", "/host/onboarding", "/host/settings", "/host/vehicles"];
-  const pathname = request.nextUrl.pathname;
+  const pathname = stripLocalePrefix(request.nextUrl.pathname);
   const isProtectedPath =
     protectedPaths.some((path) => pathname.startsWith(path)) ||
     pathname === "/host" ||
@@ -51,7 +65,7 @@ export async function updateSession(request: NextRequest) {
     // Redirect to login
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("redirect", request.nextUrl.pathname);
+    url.searchParams.set("redirect", pathname);
     return NextResponse.redirect(url);
   }
 
